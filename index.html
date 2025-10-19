@@ -12,8 +12,9 @@
       margin: 20px;
       text-align: center;
     }
-    h1 {
+    h1, h2 {
       color: #ffcc00;
+      margin-bottom: 10px;
     }
     #race-info {
       font-size: 1.2em;
@@ -80,17 +81,20 @@
   <script>
     async function fetchData() {
       try {
+        // CORS proxy
+        const feedUrl = "https://api.allorigins.win/raw?url=https://cf.nascar.com/live/feeds/live-feed.json";
+        const pointsUrl = "https://api.allorigins.win/raw?url=https://cf.nascar.com/live/feeds/series_1/5580/live_points.json";
+        const raceListUrl = "https://api.allorigins.win/raw?url=https://cf.nascar.com/cacher/2025/race_list_basic.json";
+
         const [feedRes, pointsRes, raceListRes] = await Promise.all([
-          fetch("https://cf.nascar.com/live/feeds/live-feed.json"),
-          fetch("https://cf.nascar.com/live/feeds/series_1/5580/live_points.json"),
-          fetch("https://cf.nascar.com/cacher/2025/race_list_basic.json")
+          fetch(feedUrl), fetch(pointsUrl), fetch(raceListUrl)
         ]);
 
         const feed = await feedRes.json();
         const points = await pointsRes.json();
         const raceList = await raceListRes.json();
 
-        // ----- RACE INFO HEADER -----
+        // --- Stage / Flag / Laps ---
         const currentRace = raceList.series_1.find(r => r.race_id === feed.race_id);
         const stageLaps = [
           currentRace?.stage_1_laps || 0,
@@ -109,30 +113,26 @@
           }
         }
 
-        const flagState = {
+        const flagStates = {
           1: "Green",
           2: "Yellow",
           3: "Red",
           4: "White",
           8: "Checkered"
-        }[feed.flag_state] || "Unknown";
+        };
+        const flagText = flagStates[feed.flag_state] || "Unknown";
 
         document.getElementById("race-info").innerText =
-          `Flag: ${flagState} | Stage: ${currentStage} of ${stageLaps.length} | Laps: ${lapsCompleted}/${feed.laps_in_race}`;
+          `Flag: ${flagText} | Stage: ${currentStage} of ${stageLaps.length} | Laps: ${lapsCompleted}/${feed.laps_in_race}`;
 
-        // ----- TABLE 1: LIVE RACE FEED -----
+        // --- Live Race Table ---
         const raceTable = document.querySelector("#race-table tbody");
         raceTable.innerHTML = "";
 
-        // Find the fastest lap in the field
-        const fastestLapTime = Math.min(
-          ...feed.vehicles
-            .map(v => v.best_lap_time)
-            .filter(t => t > 0)
-        );
+        const fastestLapTime = Math.min(...feed.vehicles.map(v => v.best_lap_time).filter(t => t > 0));
 
         feed.vehicles
-          .sort((a, b) => a.running_position - b.running_position)
+          .sort((a,b)=>a.running_position - b.running_position)
           .forEach(v => {
             const tr = document.createElement("tr");
             const driverName = v.driver.full_name;
@@ -142,24 +142,22 @@
               <td>${v.vehicle_number}</td>
               <td>${driverName}</td>
               <td>${v.delta || "-"}</td>
-              <td>${v.status === 1 ? "Running" : "Out"}</td>
+              <td>${v.status === 1 ? "Running" : "Out"} ${hasFastest ? '✅ Fastest Lap' : ''}</td>
               <td>${v.laps_led?.length ? v.laps_led[0].end_lap : 0}</td>
-              <td class="${hasFastest ? 'fastest' : ''}">${hasFastest ? '✅' : ''}</td>
+              <td class="${hasFastest ? 'fastest' : ''}">${hasFastest ? v.best_lap_time.toFixed(3) : '-'}</td>
             `;
             raceTable.appendChild(tr);
           });
 
-        // ----- TABLE 2: LIVE POINTS -----
+        // --- Live Points Table ---
         const pointsTable = document.querySelector("#points-table tbody");
         pointsTable.innerHTML = "";
 
         const leaderPoints = points.vehicles?.[0]?.points || 0;
         points.vehicles
-          .sort((a, b) => a.points_position - b.points_position)
+          .sort((a,b)=>a.points_position - b.points_position)
           .forEach(p => {
-            const behind = p.points_position === 1
-              ? "-"
-              : (leaderPoints - p.points);
+            const behind = p.points_position === 1 ? "-" : (leaderPoints - p.points);
             const tr = document.createElement("tr");
             tr.innerHTML = `
               <td>${p.points_position}</td>
@@ -170,13 +168,12 @@
             pointsTable.appendChild(tr);
           });
 
-      } catch (err) {
-        console.error("Error fetching data:", err);
+      } catch(err) {
+        console.error(err);
         document.getElementById("race-info").innerText = "Error loading data.";
       }
     }
 
-    // Refresh every 10 seconds
     fetchData();
     setInterval(fetchData, 10000);
   </script>
