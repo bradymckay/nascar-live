@@ -77,8 +77,9 @@
 async function fetchData() {
   try {
     const [feedRes, pointsRes] = await Promise.all([
-      fetch("https://cf.nascar.com/live/feeds/live-feed.json"),
-      fetch("https://cf.nascar.com/live/feeds/series_1/5580/live_points.json")
+      fetch("https://api.allorigins.win/raw?url=https://cf.nascar.com/live/feeds/live-feed.json"),
+      fetch("https://api.allorigins.win/raw?url=https://cf.nascar.com/live/feeds/series_1/5580/live_points.json")
+
     ]);
     const [feed, points] = await Promise.all([feedRes.json(), pointsRes.json()]);
     updateRaceTable(feed);
