@@ -33,9 +33,9 @@
   }
   tr:nth-child(even) { background-color: #1a1a1a; }
   tr:hover { background-color: #333; }
-  #updated {
+  #updated, #status {
     text-align: center;
-    font-size: 0.8rem;
+    font-size: 0.9rem;
     color: #aaa;
     margin-bottom: 1rem;
   }
@@ -43,7 +43,9 @@
 </head>
 <body>
   <h2>🏁 NASCAR Live Race Feed</h2>
+  <div id="status">Loading race status...</div>
   <div id="updated">Loading...</div>
+
   <table id="race-table">
     <thead>
       <tr>
@@ -76,20 +78,38 @@
 <script>
 async function fetchData() {
   try {
-    const [feedRes, pointsRes] = await Promise.all([
-      fetch("https://api.allorigins.win/raw?url=https://cf.nascar.com/live/feeds/live-feed.json"),
-      fetch("https://api.allorigins.win/raw?url=https://cf.nascar.com/live/feeds/series_1/5580/live_points.json")
+    // Use AllOrigins proxy to avoid CORS issues
+    const feedUrl = "https://api.allorigins.win/raw?url=https://cf.nascar.com/live/feeds/live-feed.json";
+    const pointsUrl = "https://api.allorigins.win/raw?url=https://cf.nascar.com/live/feeds/series_1/5580/live_points.json";
 
-    ]);
+    const [feedRes, pointsRes] = await Promise.all([fetch(feedUrl), fetch(pointsUrl)]);
     const [feed, points] = await Promise.all([feedRes.json(), pointsRes.json()]);
+    
     updateRaceTable(feed);
     updatePointsTable(points);
+    updateStatus(feed);
+    
     document.getElementById("updated").textContent =
       "Last updated: " + new Date().toLocaleTimeString();
   } catch (err) {
     console.error(err);
     document.getElementById("updated").textContent = "Error fetching data.";
   }
+}
+
+function updateStatus(feed) {
+  const flagMap = {
+    1: "Green Flag 🟢",
+    2: "Yellow Flag 🟡",
+    4: "Red Flag 🔴",
+    8: "Pre-Race ⚪",
+    16: "Checkered Flag 🏁"
+  };
+  const flagText = flagMap[feed.flag_state] || "Unknown";
+  const completed = feed.lap_number || 0;
+  const total = feed.laps_in_race || 0;
+  document.getElementById("status").innerHTML = 
+    `${flagText} &nbsp;|&nbsp; Laps: ${completed}/${total}`;
 }
 
 function updateRaceTable(feed) {
@@ -101,8 +121,9 @@ function updateRaceTable(feed) {
     .forEach(v => {
       const row = document.createElement("tr");
       const driver = v.driver?.full_name || "Unknown";
-      const lapsLed = v.laps_led?.length ? 
-        v.laps_led.reduce((sum, l) => sum + (l.end_lap - l.start_lap), 0) : 0;
+      const lapsLed = v.laps_led?.length
+        ? v.laps_led.reduce((sum, l) => sum + (l.end_lap - l.start_lap), 0)
+        : 0;
       row.innerHTML = `
         <td>${v.running_position ?? "-"}</td>
         <td>${v.vehicle_number ?? "-"}</td>
@@ -123,7 +144,7 @@ function updatePointsTable(points) {
   const drivers = points.drivers.sort((a,b)=>a.points_position - b.points_position);
   const leaderPoints = drivers[0]?.points || 0;
   drivers.forEach(d => {
-    const behind = d.points ? (leaderPoints - d.points) : 0;
+    const behind = d.points ? leaderPoints - d.points : 0;
     const row = document.createElement("tr");
     row.innerHTML = `
       <td>${d.points_position ?? "-"}</td>
