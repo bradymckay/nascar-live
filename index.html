@@ -12,8 +12,17 @@
     margin: 0;
     padding: 1rem;
   }
-  h2 {
+  #header {
+    position: sticky;
+    top: 0;
+    background-color: #111;
+    z-index: 100;
+    padding: 0.5rem 0;
+    border-bottom: 1px solid #333;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.5);
     text-align: center;
+  }
+  h2 {
     margin: 0.5rem 0;
   }
   table {
@@ -33,64 +42,61 @@
   }
   tr:nth-child(even) { background-color: #1a1a1a; }
   tr:hover { background-color: #333; }
-  #updated, #status {
-    text-align: center;
-    font-size: 0.9rem;
-    color: #aaa;
-    margin-bottom: 1rem;
-  }
+  .fastest { color: #0f0; font-weight: bold; }
 </style>
 </head>
 <body>
+
+<div id="header">
   <h2>🏁 NASCAR Live Race Feed</h2>
   <div id="status">Loading race status...</div>
   <div id="updated">Loading...</div>
+</div>
 
-  <table id="race-table">
-    <thead>
-      <tr>
-        <th>Pos</th>
-        <th>Car #</th>
-        <th>Driver</th>
-        <th>Interval</th>
-        <th>Status</th>
-        <th>Laps Led</th>
-        <th>Fastest Lap</th>
-      </tr>
-    </thead>
-    <tbody></tbody>
-  </table>
+<h2>Live Race Feed</h2>
+<table id="race-table">
+  <thead>
+    <tr>
+      <th>Pos</th>
+      <th>Car #</th>
+      <th>Driver</th>
+      <th>Interval</th>
+      <th>Status</th>
+      <th>Laps Led</th>
+      <th>Fastest Lap</th>
+    </tr>
+  </thead>
+  <tbody></tbody>
+</table>
 
-  <h2>📊 Live Points</h2>
-  <table id="points-table">
-    <thead>
-      <tr>
-        <th>Pos</th>
-        <th>Driver</th>
-        <th>Car #</th>
-        <th>Points</th>
-        <th>Behind Leader</th>
-      </tr>
-    </thead>
-    <tbody></tbody>
-  </table>
+<h2>Live Points</h2>
+<table id="points-table">
+  <thead>
+    <tr>
+      <th>Pos</th>
+      <th>Driver</th>
+      <th>Car #</th>
+      <th>Points</th>
+      <th>Behind Leader</th>
+      <th>Vs 4th</th>
+    </tr>
+  </thead>
+  <tbody></tbody>
+</table>
 
 <script>
 async function fetchData() {
   try {
-    // Use AllOrigins proxy to avoid CORS issues
     const feedUrl = "https://api.allorigins.win/raw?url=https://cf.nascar.com/live/feeds/live-feed.json";
     const pointsUrl = "https://api.allorigins.win/raw?url=https://cf.nascar.com/live/feeds/series_1/5580/live_points.json";
 
     const [feedRes, pointsRes] = await Promise.all([fetch(feedUrl), fetch(pointsUrl)]);
     const [feed, points] = await Promise.all([feedRes.json(), pointsRes.json()]);
-    
+
     updateRaceTable(feed);
     updatePointsTable(points);
     updateStatus(feed);
-    
-    document.getElementById("updated").textContent =
-      "Last updated: " + new Date().toLocaleTimeString();
+    document.getElementById("updated").textContent = "Last updated: " + new Date().toLocaleTimeString();
   } catch (err) {
     console.error(err);
     document.getElementById("updated").textContent = "Error fetching data.";
@@ -98,40 +104,34 @@ async function fetchData() {
 }
 
 function updateStatus(feed) {
-  const flagMap = {
-    1: "Green Flag 🟢",
-    2: "Yellow Flag 🟡",
-    4: "Red Flag 🔴",
-    8: "Pre-Race ⚪",
-    16: "Checkered Flag 🏁"
-  };
+  const flagMap = {1:"Green Flag 🟢",2:"Yellow Flag 🟡",4:"Red Flag 🔴",8:"Pre-Race ⚪",16:"Checkered Flag 🏁"};
   const flagText = flagMap[feed.flag_state] || "Unknown";
   const completed = feed.lap_number || 0;
   const total = feed.laps_in_race || 0;
-  document.getElementById("status").innerHTML = 
-    `${flagText} &nbsp;|&nbsp; Laps: ${completed}/${total}`;
+  document.getElementById("status").innerHTML = `${flagText} &nbsp;|&nbsp; Laps: ${completed}/${total}`;
 }
 
 function updateRaceTable(feed) {
   const tbody = document.querySelector("#race-table tbody");
   tbody.innerHTML = "";
   if (!feed.vehicles) return;
-  feed.vehicles
-    .sort((a, b) => a.running_position - b.running_position)
+
+  const fastestLapTime = Math.min(...feed.vehicles.map(v => v.best_lap_time).filter(t => t > 0));
+
+  feed.vehicles.sort((a,b)=>a.running_position - b.running_position)
     .forEach(v => {
       const row = document.createElement("tr");
       const driver = v.driver?.full_name || "Unknown";
-      const lapsLed = v.laps_led?.length
-        ? v.laps_led.reduce((sum, l) => sum + (l.end_lap - l.start_lap), 0)
-        : 0;
+      const lapsLed = v.laps_led?.length ? v.laps_led.reduce((sum,l)=>sum+(l.end_lap-l.start_lap),0) : 0;
+      const hasFastest = v.best_lap_time === fastestLapTime;
       row.innerHTML = `
         <td>${v.running_position ?? "-"}</td>
         <td>${v.vehicle_number ?? "-"}</td>
         <td>${driver}</td>
         <td>${v.delta ?? "-"}</td>
-        <td>${v.status === 1 ? "Running" : "Out"}</td>
+        <td>${v.status === 1 ? "Running" : "Out"} ${hasFastest ? '✅' : ''}</td>
         <td>${lapsLed}</td>
-        <td>${v.best_lap_time ? v.best_lap_time.toFixed(3) : "-"}</td>
+        <td class="${hasFastest ? 'fastest' : ''}">${v.best_lap_time ? v.best_lap_time.toFixed(3) : "-"}</td>
       `;
       tbody.appendChild(row);
     });
@@ -140,17 +140,18 @@ function updateRaceTable(feed) {
 function updatePointsTable(points) {
   const tbody = document.querySelector("#points-table tbody");
   tbody.innerHTML = "";
-  
-  // Use points.vehicles if that exists, otherwise assume root array
   const drivers = points.vehicles || points; 
   if (!drivers || !drivers.length) return;
-  
-  // Sort by points position
+
   drivers.sort((a,b)=>a.points_position - b.points_position);
   const leaderPoints = drivers[0]?.points || 0;
-  
-  drivers.forEach(d => {
+  const fourthPoints = drivers[3]?.points || 0; // 4th place points
+
+  drivers.forEach((d, idx) => {
     const behind = d.points_position === 1 ? 0 : leaderPoints - d.points;
+    let vsFourth = "-";
+    if (d.points_position <= 8) vsFourth = (d.points - fourthPoints >= 0 ? "+" : "") + (d.points - fourthPoints);
+
     const row = document.createElement("tr");
     row.innerHTML = `
       <td>${d.points_position ?? "-"}</td>
@@ -158,14 +159,15 @@ function updatePointsTable(points) {
       <td>${d.car_number ?? "-"}</td>
       <td>${d.points ?? "-"}</td>
       <td>${behind === 0 ? "Leader" : "-" + behind}</td>
+      <td>${vsFourth}</td>
     `;
     tbody.appendChild(row);
   });
 }
 
-
 fetchData();
-setInterval(fetchData, 10000); // refresh every 10 seconds
+setInterval(fetchData, 10000);
 </script>
+
 </body>
 </html>
