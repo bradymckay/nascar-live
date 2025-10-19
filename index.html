@@ -140,22 +140,29 @@ function updateRaceTable(feed) {
 function updatePointsTable(points) {
   const tbody = document.querySelector("#points-table tbody");
   tbody.innerHTML = "";
-  if (!points.drivers) return;
-  const drivers = points.drivers.sort((a,b)=>a.points_position - b.points_position);
+  
+  // Use points.vehicles if that exists, otherwise assume root array
+  const drivers = points.vehicles || points; 
+  if (!drivers || !drivers.length) return;
+  
+  // Sort by points position
+  drivers.sort((a,b)=>a.points_position - b.points_position);
   const leaderPoints = drivers[0]?.points || 0;
+  
   drivers.forEach(d => {
-    const behind = d.points ? leaderPoints - d.points : 0;
+    const behind = d.points_position === 1 ? 0 : leaderPoints - d.points;
     const row = document.createElement("tr");
     row.innerHTML = `
       <td>${d.points_position ?? "-"}</td>
       <td>${d.first_name} ${d.last_name}</td>
       <td>${d.car_number ?? "-"}</td>
       <td>${d.points ?? "-"}</td>
-      <td>${behind ? "-" + behind : "Leader"}</td>
+      <td>${behind === 0 ? "Leader" : "-" + behind}</td>
     `;
     tbody.appendChild(row);
   });
 }
+
 
 fetchData();
 setInterval(fetchData, 10000); // refresh every 10 seconds
