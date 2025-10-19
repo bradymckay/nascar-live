@@ -1,51 +1,54 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>NASCAR Live Tracker</title>
-<style>
-  body {
-    font-family: system-ui, sans-serif;
-    background-color: #111;
-    color: #eee;
-    margin: 0;
-    padding: 1rem;
-  }
-  h2 {
-    text-align: center;
-    margin: 0.5rem 0;
-  }
-  table {
-    width: 100%;
-    border-collapse: collapse;
-    margin-bottom: 1.5rem;
-    font-size: 0.9rem;
-  }
-  th, td {
-    border: 1px solid #333;
-    padding: 0.4rem;
-    text-align: center;
-  }
-  th {
-    background-color: #222;
-    color: #ffcc00;
-  }
-  tr:nth-child(even) { background-color: #1a1a1a; }
-  tr:hover { background-color: #333; }
-  #updated, #status {
-    text-align: center;
-    font-size: 0.9rem;
-    color: #aaa;
-    margin-bottom: 1rem;
-  }
-</style>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>NASCAR Live Tracker</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background: #111;
+      color: #eee;
+      margin: 20px;
+      text-align: center;
+    }
+    h1 {
+      color: #ffcc00;
+    }
+    #race-info {
+      font-size: 1.2em;
+      margin-bottom: 15px;
+    }
+    table {
+      width: 95%;
+      margin: 10px auto;
+      border-collapse: collapse;
+      background: #222;
+      border-radius: 8px;
+      overflow: hidden;
+    }
+    th, td {
+      padding: 8px 10px;
+      border-bottom: 1px solid #333;
+    }
+    th {
+      background: #333;
+      color: #ffcc00;
+    }
+    tr:nth-child(even) {
+      background: #1a1a1a;
+    }
+    .fastest {
+      color: #0f0;
+      font-weight: bold;
+    }
+  </style>
 </head>
 <body>
-  <h2>🏁 NASCAR Live Race Feed</h2>
-  <div id="status">Loading race status...</div>
-  <div id="updated">Loading...</div>
+  <h1>NASCAR Live Tracker</h1>
+  <div id="race-info">Loading race info...</div>
 
+  <h2>Live Race Feed</h2>
   <table id="race-table">
     <thead>
       <tr>
@@ -61,13 +64,12 @@
     <tbody></tbody>
   </table>
 
-  <h2>📊 Live Points</h2>
+  <h2>Live Points</h2>
   <table id="points-table">
     <thead>
       <tr>
         <th>Pos</th>
         <th>Driver</th>
-        <th>Car #</th>
         <th>Points</th>
         <th>Behind Leader</th>
       </tr>
@@ -75,90 +77,108 @@
     <tbody></tbody>
   </table>
 
-<script>
-async function fetchData() {
-  try {
-    // Use AllOrigins proxy to avoid CORS issues
-    const feedUrl = "https://api.allorigins.win/raw?url=https://cf.nascar.com/live/feeds/live-feed.json";
-    const pointsUrl = "https://api.allorigins.win/raw?url=https://cf.nascar.com/live/feeds/series_1/5580/live_points.json";
+  <script>
+    async function fetchData() {
+      try {
+        const [feedRes, pointsRes, raceListRes] = await Promise.all([
+          fetch("https://cf.nascar.com/live/feeds/live-feed.json"),
+          fetch("https://cf.nascar.com/live/feeds/series_1/5580/live_points.json"),
+          fetch("https://cf.nascar.com/cacher/2025/race_list_basic.json")
+        ]);
 
-    const [feedRes, pointsRes] = await Promise.all([fetch(feedUrl), fetch(pointsUrl)]);
-    const [feed, points] = await Promise.all([feedRes.json(), pointsRes.json()]);
-    
-    updateRaceTable(feed);
-    updatePointsTable(points);
-    updateStatus(feed);
-    
-    document.getElementById("updated").textContent =
-      "Last updated: " + new Date().toLocaleTimeString();
-  } catch (err) {
-    console.error(err);
-    document.getElementById("updated").textContent = "Error fetching data.";
-  }
-}
+        const feed = await feedRes.json();
+        const points = await pointsRes.json();
+        const raceList = await raceListRes.json();
 
-function updateStatus(feed) {
-  const flagMap = {
-    1: "Green Flag 🟢",
-    2: "Yellow Flag 🟡",
-    4: "Red Flag 🔴",
-    8: "Pre-Race ⚪",
-    16: "Checkered Flag 🏁"
-  };
-  const flagText = flagMap[feed.flag_state] || "Unknown";
-  const completed = feed.lap_number || 0;
-  const total = feed.laps_in_race || 0;
-  document.getElementById("status").innerHTML = 
-    `${flagText} &nbsp;|&nbsp; Laps: ${completed}/${total}`;
-}
+        // ----- RACE INFO HEADER -----
+        const currentRace = raceList.series_1.find(r => r.race_id === feed.race_id);
+        const stageLaps = [
+          currentRace?.stage_1_laps || 0,
+          currentRace?.stage_2_laps || 0,
+          currentRace?.stage_3_laps || 0
+        ].filter(l => l > 0);
 
-function updateRaceTable(feed) {
-  const tbody = document.querySelector("#race-table tbody");
-  tbody.innerHTML = "";
-  if (!feed.vehicles) return;
-  feed.vehicles
-    .sort((a, b) => a.running_position - b.running_position)
-    .forEach(v => {
-      const row = document.createElement("tr");
-      const driver = v.driver?.full_name || "Unknown";
-      const lapsLed = v.laps_led?.length
-        ? v.laps_led.reduce((sum, l) => sum + (l.end_lap - l.start_lap), 0)
-        : 0;
-      row.innerHTML = `
-        <td>${v.running_position ?? "-"}</td>
-        <td>${v.vehicle_number ?? "-"}</td>
-        <td>${driver}</td>
-        <td>${v.delta ?? "-"}</td>
-        <td>${v.status === 1 ? "Running" : "Out"}</td>
-        <td>${lapsLed}</td>
-        <td>${v.best_lap_time ? v.best_lap_time.toFixed(3) : "-"}</td>
-      `;
-      tbody.appendChild(row);
-    });
-}
+        const lapsCompleted = feed.lap_number || 0;
+        let currentStage = 1;
+        let lapTotal = 0;
+        for (let i = 0; i < stageLaps.length; i++) {
+          lapTotal += stageLaps[i];
+          if (lapsCompleted <= lapTotal) {
+            currentStage = i + 1;
+            break;
+          }
+        }
 
-function updatePointsTable(points) {
-  const tbody = document.querySelector("#points-table tbody");
-  tbody.innerHTML = "";
-  if (!points.drivers) return;
-  const drivers = points.drivers.sort((a,b)=>a.points_position - b.points_position);
-  const leaderPoints = drivers[0]?.points || 0;
-  drivers.forEach(d => {
-    const behind = d.points ? leaderPoints - d.points : 0;
-    const row = document.createElement("tr");
-    row.innerHTML = `
-      <td>${d.points_position ?? "-"}</td>
-      <td>${d.first_name} ${d.last_name}</td>
-      <td>${d.car_number ?? "-"}</td>
-      <td>${d.points ?? "-"}</td>
-      <td>${behind ? "-" + behind : "Leader"}</td>
-    `;
-    tbody.appendChild(row);
-  });
-}
+        const flagState = {
+          1: "Green",
+          2: "Yellow",
+          3: "Red",
+          4: "White",
+          8: "Checkered"
+        }[feed.flag_state] || "Unknown";
 
-fetchData();
-setInterval(fetchData, 10000); // refresh every 10 seconds
-</script>
+        document.getElementById("race-info").innerText =
+          `Flag: ${flagState} | Stage: ${currentStage} of ${stageLaps.length} | Laps: ${lapsCompleted}/${feed.laps_in_race}`;
+
+        // ----- TABLE 1: LIVE RACE FEED -----
+        const raceTable = document.querySelector("#race-table tbody");
+        raceTable.innerHTML = "";
+
+        // Find the fastest lap in the field
+        const fastestLapTime = Math.min(
+          ...feed.vehicles
+            .map(v => v.best_lap_time)
+            .filter(t => t > 0)
+        );
+
+        feed.vehicles
+          .sort((a, b) => a.running_position - b.running_position)
+          .forEach(v => {
+            const tr = document.createElement("tr");
+            const driverName = v.driver.full_name;
+            const hasFastest = v.best_lap_time === fastestLapTime;
+            tr.innerHTML = `
+              <td>${v.running_position}</td>
+              <td>${v.vehicle_number}</td>
+              <td>${driverName}</td>
+              <td>${v.delta || "-"}</td>
+              <td>${v.status === 1 ? "Running" : "Out"}</td>
+              <td>${v.laps_led?.length ? v.laps_led[0].end_lap : 0}</td>
+              <td class="${hasFastest ? 'fastest' : ''}">${hasFastest ? '✅' : ''}</td>
+            `;
+            raceTable.appendChild(tr);
+          });
+
+        // ----- TABLE 2: LIVE POINTS -----
+        const pointsTable = document.querySelector("#points-table tbody");
+        pointsTable.innerHTML = "";
+
+        const leaderPoints = points.vehicles?.[0]?.points || 0;
+        points.vehicles
+          .sort((a, b) => a.points_position - b.points_position)
+          .forEach(p => {
+            const behind = p.points_position === 1
+              ? "-"
+              : (leaderPoints - p.points);
+            const tr = document.createElement("tr");
+            tr.innerHTML = `
+              <td>${p.points_position}</td>
+              <td>${p.first_name} ${p.last_name}</td>
+              <td>${p.points}</td>
+              <td>${behind === "-" ? "-" : behind}</td>
+            `;
+            pointsTable.appendChild(tr);
+          });
+
+      } catch (err) {
+        console.error("Error fetching data:", err);
+        document.getElementById("race-info").innerText = "Error loading data.";
+      }
+    }
+
+    // Refresh every 10 seconds
+    fetchData();
+    setInterval(fetchData, 10000);
+  </script>
 </body>
 </html>
