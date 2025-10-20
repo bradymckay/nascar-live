@@ -3,49 +3,26 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>NASCAR Live & Next Race Dashboard</title>
+<title>NASCAR Live Points - Baseline</title>
 <style>
   body { font-family: Arial, sans-serif; background:#0a0a0a; color:#fff; margin:0; padding:0; }
   header { text-align:center; background:#111; padding:20px; border-bottom:3px solid #444; }
   header h1 { margin:0; color:#ffcc00; }
-  #status { margin-top:10px; font-size:1.1em; color:#ccc; }
-  #series-name { margin-top:5px; color:#66ccff; font-weight:bold; }
   table { width:90%; margin:20px auto; border-collapse:collapse; background:#1a1a1a; border-radius:6px; overflow:hidden; }
   th, td { padding:10px; border-bottom:1px solid #333; text-align:center; }
   th { background:#222; color:#ffcc00; }
   tr:hover { background:#2a2a2a; }
-  .fastest { color:#00ff99; font-weight:bold; }
   #updated { text-align:center; margin-bottom:20px; color:#888; font-size:0.9em; }
 </style>
 </head>
 <body>
 
 <header>
-  <h1>NASCAR Live Feed & Points</h1>
-  <div id="series-name"></div>
-  <div id="status">Loading race info...</div>
+  <h1>NASCAR Points Standings</h1>
 </header>
 
 <section>
-  <h2 style="text-align:center; color:#ffcc00;">🏁 Race Leaderboard</h2>
-  <table id="race-table">
-    <thead>
-      <tr>
-        <th>Pos</th>
-        <th>Car</th>
-        <th>Driver</th>
-        <th>Interval</th>
-        <th>Status</th>
-        <th>Laps Led</th>
-        <th>Best Lap</th>
-      </tr>
-    </thead>
-    <tbody></tbody>
-  </table>
-</section>
-
-<section>
-  <h2 style="text-align:center; color:#ffcc00;">🏆 Points Standings</h2>
+  <h2 style="text-align:center; color:#ffcc00;">🏆 Points Standings (Cup Series)</h2>
   <table id="points-table">
     <thead>
       <tr>
@@ -53,7 +30,7 @@
         <th>Driver</th>
         <th>Car</th>
         <th>Points</th>
-        <th>Behind</th>
+        <th>Behind Leader</th>
         <th>± vs 4th</th>
       </tr>
     </thead>
@@ -64,123 +41,54 @@
 <div id="updated"></div>
 
 <script>
-const RACE_LIST_URL = "./data/race_list_basic.json";
-let updateInterval = null;
-let currentMode = "idle";
+const POINTS_FILE = './data/series_1_5580_points.json'; // local JSON
 
-async function getCurrentOrNextRace() {
-  const res = await fetch(RACE_LIST_URL);
-  const data = await res.json();
-  const seriesKeys = Object.keys(data);
-  const now = new Date();
-  let nextRace = null;
-
-  for (const seriesKey of seriesKeys) {
-    const seriesData = data[seriesKey];
-    if (!Array.isArray(seriesData)) continue;
-
-    const races = seriesData.map(r => ({ ...r, raceDate: new Date(r.race_date + "Z") }));
-    const upcoming = races.find(r => r.raceDate > now);
-    if (upcoming && (!nextRace || upcoming.raceDate < nextRace.raceDate)) nextRace = upcoming;
-  }
-  return nextRace;
-}
-
-function updateNextRaceHeader(race) {
-  const header = document.getElementById("status");
-  const series = document.getElementById("series-name");
-  series.textContent = race.series_name || "Upcoming Series";
-
-  function renderCountdown() {
-    const now = new Date();
-    const diff = race.raceDate - now;
-    if (diff <= 0) {
-      header.innerHTML = `🚦 Race starting soon!`;
-      return;
-    }
-    const hours = Math.floor(diff / (1000*60*60));
-    const mins = Math.floor((diff % (1000*60*60)) / (1000*60));
-    const secs = Math.floor((diff % (1000*60)) / 1000);
-    header.innerHTML = `
-      🏁 <b>Next Race:</b> ${race.race_name}<br>
-      🏟️ <b>Track:</b> ${race.track_name}<br>
-      ⏱️ <b>Starts in:</b> ${hours}h ${mins}m ${secs}s
-    `;
-  }
-
-  renderCountdown();
-  setInterval(renderCountdown, 1000);
-}
-
-function updatePointsTable(points) {
-  const tbody = document.querySelector("#points-table tbody");
-  tbody.innerHTML = "";
-  const drivers = points.vehicles || points;
-  if (!drivers || !drivers.length) return;
-
-  drivers.sort((a,b)=>a.points_position - b.points_position);
-  const leaderPoints = drivers[0]?.points || 0;
-  const fourthPoints = drivers[3]?.points || 0;
-
-  drivers.forEach(d => {
-    const behind = d.points_position === 1 ? "Leader" : `-${leaderPoints - d.points}`;
-    let vsFourth = "-";
-    if (d.points_position <= 8) vsFourth = (d.points - fourthPoints >= 0 ? "+" : "") + (d.points - fourthPoints);
-
-    const row = document.createElement("tr");
-    row.innerHTML = `
-      <td>${d.points_position ?? "-"}</td>
-      <td>${d.first_name} ${d.last_name}</td>
-      <td>${d.car_number ?? "-"}</td>
-      <td>${d.points ?? "-"}</td>
-      <td>${behind}</td>
-      <td>${vsFourth}</td>
-    `;
-    tbody.appendChild(row);
-  });
-}
-
-async function update() {
+async function updatePoints() {
   try {
-    const nextRace = await getCurrentOrNextRace();
-    if (!nextRace) {
-      document.getElementById("status").textContent = "No upcoming races found.";
-      return;
-    }
-    document.getElementById("series-name").textContent = nextRace.series_name || "Series";
+    const res = await fetch(POINTS_FILE);
+    const points = await res.json();
 
-    // Render countdown
-    updateNextRaceHeader(nextRace);
+    const tbody = document.querySelector("#points-table tbody");
+    tbody.innerHTML = "";
 
-    // Try fetching points JSON for next race
-    const pointsFile = `./data/series_${nextRace.series_id}_${nextRace.race_id}_points.json`;
-    try {
-      const res = await fetch(pointsFile);
-      const points = await res.json();
-      updatePointsTable(points);
-    } catch(err) {
-      console.warn("Points JSON not found:", pointsFile);
-    }
+    const drivers = points.vehicles || points;
+    if (!drivers || !drivers.length) return;
+
+    // Sort by points position
+    drivers.sort((a,b) => a.points_position - b.points_position);
+
+    const leaderPoints = drivers[0]?.points || 0;
+    const fourthPoints = drivers[3]?.points || 0;
+
+    drivers.forEach(d => {
+      const behind = d.points_position === 1 ? "Leader" : `-${leaderPoints - d.points}`;
+      let vsFourth = "-";
+      if (d.points_position <= 8) vsFourth = (d.points - fourthPoints >= 0 ? "+" : "") + (d.points - fourthPoints);
+
+      const row = document.createElement("tr");
+      row.innerHTML = `
+        <td>${d.points_position ?? "-"}</td>
+        <td>${d.first_name} ${d.last_name}</td>
+        <td>${d.car_number ?? "-"}</td>
+        <td>${d.points ?? "-"}</td>
+        <td>${behind}</td>
+        <td>${vsFourth}</td>
+      `;
+      tbody.appendChild(row);
+    });
 
     document.getElementById("updated").textContent = "Last updated: " + new Date().toLocaleTimeString();
-
-    // Schedule next update
-    clearInterval(updateInterval);
-    const now = new Date();
-    if (now < nextRace.raceDate) {
-      currentMode = "idle";
-      updateInterval = setInterval(update, 60*60*1000); // hourly
-    } else {
-      currentMode = "live";
-      updateInterval = setInterval(update, 8000); // every 8s
-    }
-  } catch(err) {
-    console.error("Update failed:", err);
-    document.getElementById("status").textContent = "⚠️ Error fetching data.";
+  } catch(e) {
+    console.error("Failed to load points:", e);
+    document.getElementById("updated").textContent = "Error loading points data.";
   }
 }
 
-update();
+// Initial load
+updatePoints();
+
+// Update every 8 seconds
+setInterval(updatePoints, 8000);
 </script>
 
 </body>
