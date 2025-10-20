@@ -138,19 +138,19 @@ async function getCurrentOrNextRace(seriesId) {
     console.log("Race list keys:", Object.keys(data));
 
     const seriesKey = `series_${seriesId}`;
-    const seriesData = data[seriesKey] || data[2025]?.[seriesKey];
-    console.log("Series key used:", seriesKey);
-    console.log("Series data:", seriesData);
+    const seriesData = data[seriesKey];
+console.log("Series key used:", seriesKey);
+console.log("Series data:", seriesData);
 
-    if (!seriesData || !seriesData.races) {
-      console.warn("Series data not found:", seriesKey);
-      return null;
-    }
+if (!seriesData || !Array.isArray(seriesData)) {
+  console.warn("Series data not found:", seriesKey);
+  return null;
+}
 
-    const races = seriesData.races.map(r => ({
-      ...r,
-      raceDate: new Date(r.race_date + "Z"),
-    }));
+const races = seriesData.map(r => ({
+  ...r,
+  raceDate: new Date(r.race_date + "Z"),
+}));
 
     const now = new Date();
     console.log("Now:", now);
