@@ -1,24 +1,25 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>NASCAR Live & Next Race Dashboard</title>
-  <style>
-    body { font-family: Arial, sans-serif; background:#0a0a0a; color:#fff; margin:0; padding:0; }
-    header { text-align:center; background:#111; padding:20px; border-bottom:3px solid #444; }
-    header h1 { margin:0; color:#ffcc00; }
-    #status { margin-top:10px; font-size:1.1em; color:#ccc; }
-    #series-name { margin-top:5px; color:#66ccff; font-weight:bold; }
-    table { width:90%; margin:20px auto; border-collapse:collapse; background:#1a1a1a; border-radius:6px; overflow:hidden; }
-    th, td { padding:10px; border-bottom:1px solid #333; text-align:center; }
-    th { background:#222; color:#ffcc00; }
-    tr:hover { background:#2a2a2a; }
-    .fastest { color:#00ff99; font-weight:bold; }
-    #updated { text-align:center; margin-bottom:20px; color:#888; font-size:0.9em; }
-  </style>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>NASCAR Live & Next Race Dashboard</title>
+<style>
+  body { font-family: Arial, sans-serif; background:#0a0a0a; color:#fff; margin:0; padding:0; }
+  header { text-align:center; background:#111; padding:20px; border-bottom:3px solid #444; }
+  header h1 { margin:0; color:#ffcc00; }
+  #status { margin-top:10px; font-size:1.1em; color:#ccc; }
+  #series-name { margin-top:5px; color:#66ccff; font-weight:bold; }
+  table { width:90%; margin:20px auto; border-collapse:collapse; background:#1a1a1a; border-radius:6px; overflow:hidden; }
+  th, td { padding:10px; border-bottom:1px solid #333; text-align:center; }
+  th { background:#222; color:#ffcc00; }
+  tr:hover { background:#2a2a2a; }
+  .fastest { color:#00ff99; font-weight:bold; }
+  #updated { text-align:center; margin-bottom:20px; color:#888; font-size:0.9em; }
+</style>
 </head>
 <body>
+
 <header>
   <h1>NASCAR Live Feed & Points</h1>
   <div id="series-name"></div>
@@ -85,7 +86,6 @@ async function getCurrentOrNextRace() {
   return nextRace;
 }
 
-// Update the countdown header for the next race
 function updateNextRaceHeader(race) {
   const header = document.getElementById("status");
   const series = document.getElementById("series-name");
@@ -112,7 +112,6 @@ function updateNextRaceHeader(race) {
   setInterval(renderCountdown, 1000);
 }
 
-// Render points standings
 function updatePointsTable(points) {
   const tbody = document.querySelector("#points-table tbody");
   tbody.innerHTML = "";
@@ -153,7 +152,7 @@ async function update() {
     // Render countdown
     updateNextRaceHeader(nextRace);
 
-    // Try fetching points if local JSON for points exists
+    // Try fetching points JSON for next race
     const pointsFile = `./data/series_${nextRace.series_id}_${nextRace.race_id}_points.json`;
     try {
       const res = await fetch(pointsFile);
@@ -170,10 +169,10 @@ async function update() {
     const now = new Date();
     if (now < nextRace.raceDate) {
       currentMode = "idle";
-      updateInterval = setInterval(update, 60*60*1000); // idle = hourly
+      updateInterval = setInterval(update, 60*60*1000); // hourly
     } else {
       currentMode = "live";
-      updateInterval = setInterval(update, 8000); // live = every 8s
+      updateInterval = setInterval(update, 8000); // every 8s
     }
   } catch(err) {
     console.error("Update failed:", err);
@@ -183,5 +182,6 @@ async function update() {
 
 update();
 </script>
+
 </body>
 </html>
