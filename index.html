@@ -135,33 +135,46 @@ async function getCurrentOrNextRace(seriesId) {
     const res = await fetch(listUrl);
     const data = await res.json();
 
-    // Convert number (1/2/3) → key like "series_1"
+    console.log("Race list keys:", Object.keys(data));
+
     const seriesKey = `series_${seriesId}`;
-    const seriesData = data[seriesKey];
+    const seriesData = data[seriesKey] || data[2025]?.[seriesKey];
+    console.log("Series key used:", seriesKey);
+    console.log("Series data:", seriesData);
+
     if (!seriesData || !seriesData.races) {
       console.warn("Series data not found:", seriesKey);
       return null;
     }
 
-    const races = seriesData.races;
-    const now = new Date();
+    const races = seriesData.races.map(r => ({
+      ...r,
+      raceDate: new Date(r.race_date + "Z"),
+    }));
 
-    // Try to find an active or recent race (within 8 hours of start)
+    const now = new Date();
+    console.log("Now:", now);
+
     let activeRace = races.find(r => {
-      const raceDate = new Date(r.race_date);
+      const raceDate = r.raceDate;
       return raceDate <= now && now - raceDate < 1000 * 60 * 60 * 8;
     });
 
-    if (activeRace) return activeRace;
+    if (activeRace) {
+      console.log("Active race found:", activeRace);
+      return activeRace;
+    }
 
-    // Otherwise, find the next upcoming race
-    const upcoming = races.find(r => new Date(r.race_date) > now);
+    const upcoming = races.find(r => r.raceDate > now);
+    console.log("Upcoming race found:", upcoming);
+
     return upcoming || races[races.length - 1];
   } catch (e) {
     console.error("Race list error:", e);
     return null;
   }
 }
+
 
 
 async function fetchData(seriesId, raceId, raceInfo) {
