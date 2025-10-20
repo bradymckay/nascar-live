@@ -134,26 +134,35 @@ async function getCurrentOrNextRace(seriesId) {
     const listUrl = proxy + "https://cf.nascar.com/cacher/2025/race_list_basic.json";
     const res = await fetch(listUrl);
     const data = await res.json();
-    const races = data.series_list.find(s => s.series_id === seriesId)?.races || [];
+
+    // Convert number (1/2/3) → key like "series_1"
+    const seriesKey = `series_${seriesId}`;
+    const seriesData = data[seriesKey];
+    if (!seriesData || !seriesData.races) {
+      console.warn("Series data not found:", seriesKey);
+      return null;
+    }
+
+    const races = seriesData.races;
     const now = new Date();
 
-    // Find current or next race
-    let upcoming = null;
-    for (const race of races) {
-      const raceDate = new Date(race.race_date);
-      if (raceDate <= now && now - raceDate < 1000 * 60 * 60 * 6) { // within 6 hours window
-        return race; // active race
-      }
-      if (raceDate > now && !upcoming) {
-        upcoming = race;
-      }
-    }
-    return upcoming;
+    // Try to find an active or recent race (within 8 hours of start)
+    let activeRace = races.find(r => {
+      const raceDate = new Date(r.race_date);
+      return raceDate <= now && now - raceDate < 1000 * 60 * 60 * 8;
+    });
+
+    if (activeRace) return activeRace;
+
+    // Otherwise, find the next upcoming race
+    const upcoming = races.find(r => new Date(r.race_date) > now);
+    return upcoming || races[races.length - 1];
   } catch (e) {
     console.error("Race list error:", e);
     return null;
   }
 }
+
 
 async function fetchData(seriesId, raceId, raceInfo) {
   try {
