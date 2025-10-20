@@ -22,6 +22,13 @@
     box-shadow: 0 2px 5px rgba(0,0,0,0.5);
     text-align: center;
   }
+  select {
+    background: #222;
+    color: #ffcc00;
+    border: 1px solid #555;
+    padding: 0.3rem 0.5rem;
+    margin-top: 0.5rem;
+  }
   h2 {
     margin: 0.5rem 0;
   }
@@ -43,12 +50,25 @@
   tr:nth-child(even) { background-color: #1a1a1a; }
   tr:hover { background-color: #333; }
   .fastest { color: #0f0; font-weight: bold; }
+  #next-race {
+    text-align: center;
+    margin: 2rem 0;
+    font-size: 1.1rem;
+  }
 </style>
 </head>
 <body>
 
 <div id="header">
   <h2>🏁 NASCAR Live Race Feed</h2>
+  <div>
+    <label for="series">Select Series: </label>
+    <select id="series">
+      <option value="1">Cup Series</option>
+      <option value="2">Xfinity Series</option>
+      <option value="3">Truck Series</option>
+    </select>
+  </div>
   <div id="status">Loading race status...</div>
   <div id="updated">Loading...</div>
 </div>
@@ -84,32 +104,100 @@
   <tbody></tbody>
 </table>
 
+<div id="next-race"></div>
+
 <script>
-async function fetchData() {
+const proxy = "https://api.allorigins.win/raw?url=";
+let currentSeries = 1;
+let currentRaceId = null;
+let refreshInterval = null;
+
+document.getElementById("series").addEventListener("change", (e) => {
+  currentSeries = parseInt(e.target.value);
+  clearInterval(refreshInterval);
+  init();
+});
+
+async function init() {
+  document.getElementById("status").textContent = "Loading race data...";
+  const race = await getCurrentOrNextRace(currentSeries);
+  if (!race) {
+    document.getElementById("status").textContent = "No race data found.";
+    return;
+  }
+  currentRaceId = race.race_id;
+  await fetchData(currentSeries, currentRaceId, race);
+}
+
+async function getCurrentOrNextRace(seriesId) {
   try {
-    const feedUrl = "https://api.allorigins.win/raw?url=https://cf.nascar.com/live/feeds/live-feed.json";
-    const pointsUrl = "https://api.allorigins.win/raw?url=https://cf.nascar.com/live/feeds/series_1/5580/live_points.json";
+    const listUrl = proxy + "https://cf.nascar.com/cacher/2025/race_list_basic.json";
+    const res = await fetch(listUrl);
+    const data = await res.json();
+    const races = data.series_list.find(s => s.series_id === seriesId)?.races || [];
+    const now = new Date();
 
-    const [feedRes, pointsRes] = await Promise.all([fetch(feedUrl), fetch(pointsUrl)]);
-    const [feed, points] = await Promise.all([feedRes.json(), pointsRes.json()]);
+    // Find current or next race
+    let upcoming = null;
+    for (const race of races) {
+      const raceDate = new Date(race.race_date);
+      if (raceDate <= now && now - raceDate < 1000 * 60 * 60 * 6) { // within 6 hours window
+        return race; // active race
+      }
+      if (raceDate > now && !upcoming) {
+        upcoming = race;
+      }
+    }
+    return upcoming;
+  } catch (e) {
+    console.error("Race list error:", e);
+    return null;
+  }
+}
 
-    updateRaceTable(feed);
-    updatePointsTable(points);
-    updateStatus(feed);
+async function fetchData(seriesId, raceId, raceInfo) {
+  try {
+    const pointsUrl = proxy + `https://cf.nascar.com/live/feeds/series_${seriesId}/${raceId}/live_points.json`;
+    const res = await fetch(pointsUrl);
+    const data = await res.json();
+
+    if (!data || !data.vehicles) {
+      showNextRace(raceInfo);
+      return;
+    }
+
+    updateStatus(data, raceInfo);
+    updateRaceTable(data);
+    updatePointsTable(data);
+
+    const flagState = data.flag_state_text?.toLowerCase() || "";
+    clearInterval(refreshInterval);
+    if (flagState.includes("cold")) {
+      refreshInterval = setInterval(() => init(), 60 * 60 * 1000); // every hour
+    } else {
+      refreshInterval = setInterval(() => fetchData(seriesId, raceId, raceInfo), 8000);
+    }
 
     document.getElementById("updated").textContent = "Last updated: " + new Date().toLocaleTimeString();
   } catch (err) {
     console.error(err);
-    document.getElementById("updated").textContent = "Error fetching data.";
+    showNextRace(raceInfo);
   }
 }
 
-function updateStatus(feed) {
-  const flagMap = {1:"Green Flag 🟢",2:"Yellow Flag 🟡",4:"Red Flag 🔴",8:"Pre-Race ⚪",16:"Checkered Flag 🏁"};
-  const flagText = flagMap[feed.flag_state] || "Unknown";
+function updateStatus(feed, raceInfo) {
+  const flagMap = {
+    1: "Green Flag 🟢",
+    2: "Yellow Flag 🟡",
+    4: "Red Flag 🔴",
+    8: "Pre-Race ⚪",
+    16: "Checkered Flag 🏁"
+  };
+  const flagText = flagMap[feed.flag_state] || feed.flag_state_text || "Unknown";
   const completed = feed.lap_number || 0;
   const total = feed.laps_in_race || 0;
-  document.getElementById("status").innerHTML = `${flagText} &nbsp;|&nbsp; Laps: ${completed}/${total}`;
+  const raceName = raceInfo?.race_name || "Unknown Race";
+  document.getElementById("status").innerHTML = `${raceName} | ${flagText} | Laps: ${completed}/${total}`;
 }
 
 function updateRaceTable(feed) {
@@ -118,28 +206,25 @@ function updateRaceTable(feed) {
   if (!feed.vehicles) return;
 
   const fastestLapTime = Math.min(...feed.vehicles.map(v => v.best_lap_time).filter(t => t > 0));
-
-  feed.vehicles.sort((a,b)=>a.running_position - b.running_position)
-    .forEach(v => {
-      const row = document.createElement("tr");
-      const driver = v.driver?.full_name || "Unknown";
-      const lapsLedVal = v.laps_led?.length 
-        ? v.laps_led.reduce((sum, l) => sum + (l.end_lap - l.start_lap + 1), 0) 
-        : 0;
-      const lapsLed = lapsLedVal > 0 ? lapsLedVal : "-";
-      const hasFastest = v.best_lap_time === fastestLapTime;
-
-      row.innerHTML = `
-        <td>${v.running_position ?? "-"}</td>
-        <td>${v.vehicle_number ?? "-"}</td>
-        <td>${driver}</td>
-        <td>${v.delta ?? "-"}</td>
-        <td>${v.status === 1 ? "Running" : "Out"} ${hasFastest ? '✅' : ''}</td>
-        <td>${lapsLed}</td>
-        <td class="${hasFastest ? 'fastest' : ''}">${v.best_lap_time ? v.best_lap_time.toFixed(3) : "-"}</td>
-      `;
-      tbody.appendChild(row);
-    });
+  feed.vehicles.sort((a,b)=>a.running_position - b.running_position).forEach(v => {
+    const driver = v.driver?.full_name || "Unknown";
+    const lapsLedVal = v.laps_led?.length 
+      ? v.laps_led.reduce((sum, l) => sum + (l.end_lap - l.start_lap + 1), 0)
+      : 0;
+    const lapsLed = lapsLedVal > 0 ? lapsLedVal : "-";
+    const hasFastest = v.best_lap_time === fastestLapTime;
+    const row = document.createElement("tr");
+    row.innerHTML = `
+      <td>${v.running_position ?? "-"}</td>
+      <td>${v.vehicle_number ?? "-"}</td>
+      <td>${driver}</td>
+      <td>${v.delta ?? "-"}</td>
+      <td>${v.status === 1 ? "Running" : "Out"} ${hasFastest ? '✅' : ''}</td>
+      <td>${lapsLed}</td>
+      <td class="${hasFastest ? 'fastest' : ''}">${v.best_lap_time ? v.best_lap_time.toFixed(3) : "-"}</td>
+    `;
+    tbody.appendChild(row);
+  });
 }
 
 function updatePointsTable(points) {
@@ -152,7 +237,7 @@ function updatePointsTable(points) {
   const leaderPoints = drivers[0]?.points || 0;
   const fourthPoints = drivers[3]?.points || 0;
 
-  drivers.forEach((d, idx) => {
+  drivers.forEach((d) => {
     const behind = d.points_position === 1 ? 0 : leaderPoints - d.points;
     let vsFourth = "-";
     if (d.points_position <= 8) vsFourth = (d.points - fourthPoints >= 0 ? "+" : "") + (d.points - fourthPoints);
@@ -170,8 +255,22 @@ function updatePointsTable(points) {
   });
 }
 
-fetchData();
-setInterval(fetchData, 10000);
+function showNextRace(race) {
+  const now = new Date();
+  const raceDate = new Date(race.race_date);
+  const diff = raceDate - now;
+  const days = Math.floor(diff / (1000*60*60*24));
+  const hours = Math.floor((diff / (1000*60*60)) % 24);
+  const mins = Math.floor((diff / (1000*60)) % 60);
+  document.getElementById("next-race").innerHTML = `
+    <strong>Next Race:</strong> ${race.race_name}<br>
+    <strong>Track:</strong> ${race.track_name}<br>
+    <strong>Series:</strong> ${document.getElementById("series").selectedOptions[0].text}<br>
+    <strong>Countdown:</strong> ${days}d ${hours}h ${mins}m
+  `;
+}
+
+init();
 </script>
 
 </body>
