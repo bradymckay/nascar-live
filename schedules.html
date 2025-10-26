@@ -126,17 +126,30 @@ async function loadSchedule() {
         .filter(r => r.dateObj > now)
         .sort((a,b) => a.dateObj - b.dateObj);
 
-      upcoming.forEach(r => {
+      if (upcoming.length > 0) {
+        // Show the next upcoming race
+        const nextRace = upcoming[0];
+        const dateTimeStr = nextRace.dateObj.toLocaleString('en-US', {
+          month:'2-digit', day:'2-digit', year:'2-digit',
+          hour:'numeric', minute:'2-digit', hour12:true
+        });
         const row = document.createElement("tr");
-        const dateTimeStr = r.dateObj.toLocaleString('en-US', { month:'2-digit', day:'2-digit', year:'2-digit', hour:'numeric', minute:'2-digit', hour12:true });
         row.innerHTML = `
           <td>${seriesName}</td>
-          <td>${r.race_name}</td>
-          <td>${r.track_name}</td>
+          <td>${nextRace.race_name}</td>
+          <td>${nextRace.track_name}</td>
           <td>${dateTimeStr}</td>
         `;
         tbody.appendChild(row);
-      });
+      } else {
+        // If no races left in this series
+        const row = document.createElement("tr");
+        row.innerHTML = `
+          <td>${seriesName}</td>
+          <td colspan="3"><em>Next Race: Next Season</em></td>
+        `;
+        tbody.appendChild(row);
+      }
     });
 
   } catch (err) {
