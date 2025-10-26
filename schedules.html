@@ -93,9 +93,19 @@
       <th>Date / Time</th>
     </tr>
   </thead>
-  <tbody>
-    <!-- Schedule rows will be populated dynamically -->
-  </tbody>
+  <tbody></tbody>
+</table>
+
+<h2>Completed Races</h2>
+<table id="completed-table">
+  <thead>
+    <tr>
+      <th>Cup Series</th>
+      <th>Xfinity Series</th>
+      <th>Truck Series</th>
+    </tr>
+  </thead>
+  <tbody></tbody>
 </table>
 
 <script>
@@ -116,18 +126,17 @@ async function loadSchedule() {
     const tbody = document.querySelector("#schedule-table tbody");
     tbody.innerHTML = "";
 
+    // --- NEXT RACE TABLE ---
     Object.entries(seriesMap).forEach(([seriesKey, seriesName]) => {
       const races = raceList[seriesKey] || [];
       const now = new Date();
 
-      // Filter upcoming races only
       const upcoming = races
         .map(r => ({ ...r, dateObj: new Date(r.race_date) }))
         .filter(r => r.dateObj > now)
         .sort((a,b) => a.dateObj - b.dateObj);
 
       if (upcoming.length > 0) {
-        // Show the next upcoming race
         const nextRace = upcoming[0];
         const dateTimeStr = nextRace.dateObj.toLocaleString('en-US', {
           month:'2-digit', day:'2-digit', year:'2-digit',
@@ -142,7 +151,6 @@ async function loadSchedule() {
         `;
         tbody.appendChild(row);
       } else {
-        // If no races left in this series
         const row = document.createElement("tr");
         row.innerHTML = `
           <td>${seriesName}</td>
@@ -152,10 +160,45 @@ async function loadSchedule() {
       }
     });
 
+    // --- COMPLETED RACES TABLE ---
+    const completedTbody = document.querySelector("#completed-table tbody");
+    completedTbody.innerHTML = "";
+
+    const completedData = {};
+    Object.keys(seriesMap).forEach(key => {
+      const races = raceList[key] || [];
+      completedData[key] = races
+        .map(r => ({ ...r, dateObj: new Date(r.race_date) }))
+        .filter(r => r.dateObj < new Date())
+        .sort((a,b) => a.dateObj - b.dateObj);
+    });
+
+    const maxRows = Math.max(
+      completedData.series_1.length,
+      completedData.series_2.length,
+      completedData.series_3.length
+    );
+
+    for (let i = 0; i < maxRows; i++) {
+      const cup = completedData.series_1[i];
+      const xfin = completedData.series_2[i];
+      const truck = completedData.series_3[i];
+
+      const row = document.createElement("tr");
+      row.innerHTML = `
+        <td>${cup ? `${cup.race_name} - ${cup.track_name} (${new Date(cup.race_date).toLocaleDateString()})` : ""}</td>
+        <td>${xfin ? `${xfin.race_name} - ${xfin.track_name} (${new Date(xfin.race_date).toLocaleDateString()})` : ""}</td>
+        <td>${truck ? `${truck.race_name} - ${truck.track_name} (${new Date(truck.race_date).toLocaleDateString()})` : ""}</td>
+      `;
+      completedTbody.appendChild(row);
+    }
+
   } catch (err) {
     console.error(err);
-    const tbody = document.querySelector("#schedule-table tbody");
-    tbody.innerHTML = `<tr><td colspan="4">Error loading schedule.</td></tr>`;
+    document.querySelector("#schedule-table tbody").innerHTML =
+      `<tr><td colspan="4">Error loading schedule.</td></tr>`;
+    document.querySelector("#completed-table tbody").innerHTML =
+      `<tr><td colspan="3">Error loading completed races.</td></tr>`;
   }
 }
 
