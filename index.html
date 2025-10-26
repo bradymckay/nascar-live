@@ -1,76 +1,68 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>NASCAR Live Tracker</title>
-<style>
-  body {
-    font-family: system-ui, sans-serif;
-    background-color: #111;
-    color: #eee;
-    margin: 0;
-    padding: 1rem;
-  }
-  #header {
-    position: sticky;
-    top: 0;
-    background-color: #111;
-    z-index: 100;
-    padding: 0.5rem 0;
-    border-bottom: 1px solid #333;
-    box-shadow: 0 2px 5px rgba(0,0,0,0.5);
-    text-align: center;
-  }
-  h2 {
-    margin: 0.5rem 0;
-  }
-  table {
-    width: 100%;
-    border-collapse: collapse;
-    margin-bottom: 1.5rem;
-    font-size: 0.9rem;
-  }
-  th, td {
-    border: 1px solid #333;
-    padding: 0.4rem;
-    text-align: center;
-  }
-  th {
-    background-color: #222;
-    color: #ffcc00;
-  }
-  tr:nth-child(even) { background-color: #1a1a1a; }
-  tr:hover { background-color: #333; }
-  .fastest { color: #0f0; font-weight: bold; }
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>NASCAR Live Race Feed</title>
+  <style>
+    body {
+      background-color: #111;
+      color: #fff;
+      font-family: Arial, sans-serif;
+      margin: 0;
+      padding: 1rem;
+    }
+    h2 {
+      color: #ffcc00;
+      text-align: center;
+      margin-bottom: 0.5rem;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-bottom: 1rem;
+      font-size: 0.9rem;
+    }
+    th, td {
+      border: 1px solid #333;
+      padding: 0.4rem;
+      text-align: center;
+    }
+    th {
+      background-color: #222;
+      color: #ffcc00;
+    }
+    tr:nth-child(even) { background-color: #1a1a1a; }
+    tr:hover { background-color: #333; }
+    .fastest { color: #0f0; font-weight: bold; }
 
-  /* Navigation bar */
-  .nav-bar {
-    display: flex;
-    justify-content: center;
-    margin-top: 0.5rem;
-    gap: 15px;
-  }
-  .nav-link {
-    color: #ffcc00;
-    text-decoration: none;
-    font-weight: bold;
-    padding: 5px 12px;
-    border: 1px solid transparent;
-    border-radius: 4px;
-    transition: all 0.2s;
-  }
-  .nav-link:hover {
-    background-color: #ffcc00;
-    color: #111;
-    border-color: #ffcc00;
-  }
-  .nav-link.active {
-    background-color: #ffcc00;
-    color: #111;
-    border-color: #ffcc00;
-  }
-</style>
+    /* Navigation bar */
+    .nav-bar {
+      display: flex;
+      justify-content: center;
+      margin-top: 0.5rem;
+      gap: 15px;
+    }
+    .nav-link {
+      color: #ffcc00;
+      text-decoration: none;
+      font-weight: bold;
+      padding: 5px 12px;
+      border: 1px solid transparent;
+      border-radius: 4px;
+      transition: all 0.2s;
+    }
+    .nav-link:hover {
+      background-color: #ffcc00;
+      color: #111;
+      border-color: #ffcc00;
+    }
+    .nav-link.active {
+      background-color: #ffcc00;
+      color: #111;
+      border-color: #ffcc00;
+    }
+  </style>
 </head>
 <body>
 
@@ -137,10 +129,23 @@ async function fetchData() {
 }
 
 function updateStatus(feed) {
-  const flagMap = {1:"Green Flag 🟢",2:"Yellow Flag 🟡",4:"Red Flag 🔴",8:"Pre-Race ⚪",16:"Checkered Flag 🏁"};
-  const flagText = flagMap[feed.flag_state] || "Unknown";
+  const flagMap = {
+    0: "No Flag 🏳️",
+    1: "Green Flag 🟢",
+    2: "Yellow Flag 🟡",
+    3: "Red Flag 🔴",
+    4: "White Flag ⚪",
+    5: "Checkered Flag 🏁",
+    6: "Who Knows 1 🤷‍♂️",
+    7: "Who Knows 2 🤷‍♀️",
+    8: "Hot Track 🔥",
+    9: "Cold Track ❄️"
+  };
+
+  const flagText = flagMap[feed.flag_state] || "Unaccounted Flag";
   const completed = feed.lap_number || 0;
   const total = feed.laps_in_race || 0;
+
   document.getElementById("status").innerHTML = `${flagText} &nbsp;|&nbsp; Laps: ${completed}/${total}`;
 }
 
@@ -182,7 +187,7 @@ function updatePointsTable(points) {
 
   drivers.sort((a,b)=>a.points_position - b.points_position);
   const leaderPoints = drivers[0]?.points || 0;
-  const fourthPoints = drivers[4]?.points || 0; // Top 8 reference
+  const fourthPoints = drivers[4]?.points || 0;
 
   drivers.forEach((d, idx) => {
     const behind = d.points_position === 1 ? 0 : leaderPoints - d.points;
