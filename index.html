@@ -182,7 +182,7 @@ function updatePointsTable(points) {
 
   drivers.sort((a,b)=>a.points_position - b.points_position);
   const leaderPoints = drivers[0]?.points || 0;
-  const fourthPoints = drivers[7]?.points || 0; // Top 8 reference
+  const fourthPoints = drivers[5]?.points || 0; // Top 8 reference
 
   drivers.forEach((d, idx) => {
     const behind = d.points_position === 1 ? 0 : leaderPoints - d.points;
