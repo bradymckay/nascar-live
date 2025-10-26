@@ -94,22 +94,60 @@
     </tr>
   </thead>
   <tbody>
-    <!-- Schedule rows will go here -->
-    <tr>
-      <td>Cup Series</td>
-      <td>South Point 400</td>
-      <td>Las Vegas Motor Speedway</td>
-      <td>10/26/25 2:00 PM</td>
-    </tr>
-    <tr>
-      <td>Xfinity Series</td>
-      <td>Example Race</td>
-      <td>Daytona International Speedway</td>
-      <td>11/02/25 1:00 PM</td>
-    </tr>
-    <!-- Add more races as needed -->
+    <!-- Schedule rows will be populated dynamically -->
   </tbody>
 </table>
+
+<script>
+const raceListUrl = "https://api.allorigins.win/raw?url=https://cf.nascar.com/cacher/2025/race_list_basic.json";
+
+async function loadSchedule() {
+  try {
+    const res = await fetch(raceListUrl);
+    if (!res.ok) throw new Error("Failed to fetch race list");
+    const raceList = await res.json();
+
+    const seriesMap = {
+      series_1: "NASCAR Cup Series",
+      series_2: "NASCAR Xfinity Series",
+      series_3: "NASCAR Craftsman Truck Series"
+    };
+
+    const tbody = document.querySelector("#schedule-table tbody");
+    tbody.innerHTML = "";
+
+    Object.entries(seriesMap).forEach(([seriesKey, seriesName]) => {
+      const races = raceList[seriesKey] || [];
+      const now = new Date();
+
+      // Filter upcoming races only
+      const upcoming = races
+        .map(r => ({ ...r, dateObj: new Date(r.race_date) }))
+        .filter(r => r.dateObj > now)
+        .sort((a,b) => a.dateObj - b.dateObj);
+
+      upcoming.forEach(r => {
+        const row = document.createElement("tr");
+        const dateTimeStr = r.dateObj.toLocaleString('en-US', { month:'2-digit', day:'2-digit', year:'2-digit', hour:'numeric', minute:'2-digit', hour12:true });
+        row.innerHTML = `
+          <td>${seriesName}</td>
+          <td>${r.race_name}</td>
+          <td>${r.track_name}</td>
+          <td>${dateTimeStr}</td>
+        `;
+        tbody.appendChild(row);
+      });
+    });
+
+  } catch (err) {
+    console.error(err);
+    const tbody = document.querySelector("#schedule-table tbody");
+    tbody.innerHTML = `<tr><td colspan="4">Error loading schedule.</td></tr>`;
+  }
+}
+
+loadSchedule();
+</script>
 
 </body>
 </html>
