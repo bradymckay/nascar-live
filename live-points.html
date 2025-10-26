@@ -15,7 +15,7 @@
     table {
       border-collapse: collapse;
       width: 100%;
-      max-width: 900px;
+      max-width: 950px;
       margin-top: 10px;
     }
     th, td {
@@ -24,11 +24,12 @@
       text-align: left;
     }
     th { background-color: #222; }
-    p { margin-top: 10px; }
+    tr:nth-child(even) { background-color: #181818; }
+    tr:hover { background-color: #333; }
     .nav-bar {
       display: flex;
       justify-content: center;
-      margin-top: 0.5rem;
+      margin-bottom: 1rem;
       gap: 15px;
     }
     .nav-link {
@@ -53,7 +54,7 @@
   </style>
 </head>
 <body>
-  <h1>🏁 NASCAR Cup Series Driver Standings</h1>
+  <h1>🏁 NASCAR Cup Series Live Points</h1>
 
   <nav class="nav-bar">
     <a href="index.html" class="nav-link">Live Race Tracker</a>
@@ -61,48 +62,61 @@
     <a href="live-points.html" class="nav-link active">Live Points</a>
   </nav>
 
-  <div id="live-points">Loading Cup Series standings...</div>
+  <div id="live-points">Loading live Cup Series data...</div>
 
   <script>
+    const livePointsUrl = "https://cf.nascar.com/live/feeds/series_1/5584/live_points.json";
     const weekendFeedUrl = "https://cf.nascar.com/cacher/2025/1/5584/weekend-feed.json";
     const container = document.getElementById("live-points");
 
-    async function loadCupStandings() {
+    async function loadLivePoints() {
       try {
-        const res = await fetch(weekendFeedUrl);
-        if (!res.ok) throw new Error(`Failed to fetch weekend feed: ${res.status}`);
-        const data = await res.json();
+        const [liveRes, weekendRes] = await Promise.all([
+          fetch(livePointsUrl),
+          fetch(weekendFeedUrl)
+        ]);
 
-        // Navigate safely to Cup Series standings
-        const cupData = data.weekend_race?.find(r => r.series_id === 1);
-        const standings = cupData?.driver_standings;
+        if (!liveRes.ok || !weekendRes.ok)
+          throw new Error(`Failed to fetch data (status: ${liveRes.status}, ${weekendRes.status})`);
 
-        if (!standings || standings.length === 0) {
-          container.innerHTML = "No standings data available for Cup Series.";
+        const liveData = await liveRes.json();
+        const weekendData = await weekendRes.json();
+
+        // Get Cup Series driver stats from weekend feed
+        const cupData = weekendData.weekend_race?.find(r => r.series_id === 1);
+        const stats = cupData?.driver_standings || [];
+
+        if (!liveData || !Array.isArray(liveData) || liveData.length === 0) {
+          container.innerHTML = "Race has not started or live points are not yet available.";
           return;
         }
 
-        // Build table
+        // Build table with Season Points + Live Points Earned
         let html = `<table>
           <tr>
             <th>Pos</th>
             <th>Driver</th>
-            <th>Points</th>
+            <th>Season Points</th>
+            <th>Points This Race</th>
             <th>Wins</th>
             <th>Top 5s</th>
             <th>Top 10s</th>
             <th>Poles</th>
           </tr>`;
 
-        standings.forEach((driver, index) => {
+        liveData.forEach((driver, index) => {
+          // Find corresponding driver in standings data
+          const stat = stats.find(s => s.driver_id === driver.driver_id) || {};
+
           html += `<tr>
-            <td>${driver.position || index + 1}</td>
+            <td>${driver.points_position || index + 1}</td>
             <td>${driver.first_name} ${driver.last_name || ''}</td>
             <td>${driver.points || 0}</td>
-            <td>${driver.wins || 0}</td>
-            <td>${driver.top_5 || 0}</td>
-            <td>${driver.top_10 || 0}</td>
-            <td>${driver.poles || 0}</td>
+            <td>${driver.points_earned_this_race || 0}</td>
+            <td>${stat.wins || 0}</td>
+            <td>${stat.top_5 || 0}</td>
+            <td>${stat.top_10 || 0}</td>
+            <td>${stat.poles || 0}</td>
           </tr>`;
         });
 
@@ -110,13 +124,14 @@
         container.innerHTML = html;
 
       } catch (err) {
-        console.error("Error loading standings:", err);
-        container.innerHTML = "⚠️ Error loading Cup Series standings. Try again later.";
+        console.error("Error loading Cup data:", err);
+        container.innerHTML = "⚠️ Error loading Cup Series data. Please try again later.";
       }
     }
 
-    // Initial load
-    loadCupStandings();
+    // Initial load + refresh every 60 seconds
+    loadLivePoints();
+    setInterval(loadLivePoints, 60000);
   </script>
 </body>
 </html>
