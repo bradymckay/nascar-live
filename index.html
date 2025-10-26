@@ -120,7 +120,7 @@
 async function fetchData() {
   try {
     const feedUrl = "https://api.allorigins.win/raw?url=https://cf.nascar.com/live/feeds/live-feed.json";
-    const pointsUrl = "https://api.allorigins.win/raw?url=https://cf.nascar.com/live/feeds/series_1/5580/live_points.json";
+    const pointsUrl = "https://api.allorigins.win/raw?url=https://cf.nascar.com/live/feeds/series_1/5584/live_points.json";
 
     const [feedRes, pointsRes] = await Promise.all([fetch(feedUrl), fetch(pointsUrl)]);
     const [feed, points] = await Promise.all([feedRes.json(), pointsRes.json()]);
