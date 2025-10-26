@@ -66,36 +66,27 @@
 
   <script>
     const livePointsUrl = "https://cf.nascar.com/live/feeds/series_1/5584/live_points.json";
-    const weekendFeedUrl = "https://cf.nascar.com/cacher/2025/1/5584/weekend-feed.json";
     const container = document.getElementById("live-points");
 
     async function loadLivePoints() {
       try {
-        const [liveRes, weekendRes] = await Promise.all([
-          fetch(livePointsUrl),
-          fetch(weekendFeedUrl)
-        ]);
+        const res = await fetch(livePointsUrl);
+        if (!res.ok) throw new Error(`Failed to fetch live points: ${res.status}`);
+        const data = await res.json();
 
-        if (!liveRes.ok || !weekendRes.ok)
-          throw new Error(`Failed to fetch data (status: ${liveRes.status}, ${weekendRes.status})`);
+        // Filter Cup Series (series_id 0 may correspond to Cup)
+        const cupDrivers = (data.vehicles || data).filter(d => d.series_id === 0);
 
-        const liveData = await liveRes.json();
-        const weekendData = await weekendRes.json();
-
-        // Get Cup Series driver stats from weekend feed
-        const cupData = weekendData.weekend_race?.find(r => r.series_id === 1);
-        const stats = cupData?.driver_standings || [];
-
-        if (!liveData || !Array.isArray(liveData) || liveData.length === 0) {
+        if (!cupDrivers || cupDrivers.length === 0) {
           container.innerHTML = "Race has not started or live points are not yet available.";
           return;
         }
 
-        // Build table with Season Points + Live Points Earned
         let html = `<table>
           <tr>
             <th>Pos</th>
             <th>Driver</th>
+            <th>Car #</th>
             <th>Season Points</th>
             <th>Points This Race</th>
             <th>Wins</th>
@@ -104,21 +95,20 @@
             <th>Poles</th>
           </tr>`;
 
-        liveData.forEach((driver, index) => {
-          // Find corresponding driver in standings data
-          const stat = stats.find(s => s.driver_id === driver.driver_id) || {};
-
-          html += `<tr>
-            <td>${driver.points_position || index + 1}</td>
-            <td>${driver.first_name} ${driver.last_name || ''}</td>
-            <td>${driver.points || 0}</td>
-            <td>${driver.points_earned_this_race || 0}</td>
-            <td>${stat.wins || 0}</td>
-            <td>${stat.top_5 || 0}</td>
-            <td>${stat.top_10 || 0}</td>
-            <td>${stat.poles || 0}</td>
-          </tr>`;
-        });
+        cupDrivers.sort((a,b) => a.points_position - b.points_position)
+          .forEach(d => {
+            html += `<tr>
+              <td>${d.points_position ?? '-'}</td>
+              <td>${d.first_name} ${d.last_name}</td>
+              <td>${d.car_number ?? '-'}</td>
+              <td>${d.points ?? 0}</td>
+              <td>${d.points_earned_this_race ?? 0}</td>
+              <td>${d.wins ?? 0}</td>
+              <td>${d.top_5 ?? 0}</td>
+              <td>${d.top_10 ?? 0}</td>
+              <td>${d.poles ?? 0}</td>
+            </tr>`;
+          });
 
         html += "</table>";
         container.innerHTML = html;
@@ -129,7 +119,6 @@
       }
     }
 
-    // Initial load + refresh every 60 seconds
     loadLivePoints();
     setInterval(loadLivePoints, 60000);
   </script>
