@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Cup Series Live Points</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background-color: #0b0b0b;
+      color: #fff;
+      padding: 20px;
+    }
+    h1 { color: #f9d342; }
+    table {
+      border-collapse: collapse;
+      width: 100%;
+      max-width: 900px;
+      margin-top: 10px;
+    }
+    th, td {
+      border: 1px solid #444;
+      padding: 6px 8px;
+      text-align: left;
+    }
+    th { background-color: #222; }
+    nav a { margin-right: 15px; color:#f9d342; text-decoration: none; font-weight:bold; }
+    nav a:hover { text-decoration: underline; }
+    p { margin-top: 10px; }
+  </style>
+</head>
+<body>
+
+<nav>
+  <a href="index.html">Home</a>
+  <a href="schedules.html">Schedule</a>
+  <a href="live-points.html">Live Points</a>
+</nav>
+<hr>
+
+<h1>🏁 Cup Series Live Points</h1>
+<div id="live-points">Loading live points...</div>
+
+<script>
+  const livePointsUrl = "https://cf.nascar.com/live/feeds/series_1/5584/live_points.json";
+  const container = document.getElementById("live-points");
+
+  async function loadLivePoints() {
+    try {
+      const res = await fetch(livePointsUrl);
+      if (!res.ok) throw new Error(`Failed to fetch live points: ${res.status}`);
+      const data = await res.json();
+
+      console.log("Live points JSON:", data);
+
+      if (!data || !Array.isArray(data) || data.length === 0) {
+        container.innerHTML = "Race has not started or live points are not yet posted.";
+        return;
+      }
+
+      // Build table with Season Points and Points Earned This Race
+      let html = `<table>
+        <tr>
+          <th>Pos</th>
+          <th>Driver</th>
+          <th>Season Points</th>
+          <th>Points This Race</th>
+        </tr>`;
+      data.forEach((driver, index) => {
+        html += `<tr>
+          <td>${index + 1}</td>
+          <td>${driver.first_name} ${driver.last_name || ''}</td>
+          <td>${driver.points || 0}</td>
+          <td>${driver.points_earned_this_race || 0}</td>
+        </tr>`;
+      });
+      html += "</table>";
+
+      container.innerHTML = html;
+
+    } catch (err) {
+      container.innerHTML = "Error loading live points. Check console for details.";
+      console.error(err);
+    }
+  }
+
+  // Initial load
+  loadLivePoints();
+
+  // Auto-refresh every 60 seconds
+  setInterval(loadLivePoints, 60000);
+</script>
+
+</body>
+</html>
