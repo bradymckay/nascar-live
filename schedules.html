@@ -1,120 +1,115 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Next NASCAR Races</title>
-  <style>
-    body {
-      font-family: Arial, sans-serif;
-      background: #0b0b0b;
-      color: #fff;
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      min-height: 100vh;
-      flex-direction: column;
-    }
-    .card {
-      background: #1a1a1a;
-      border-radius: 10px;
-      padding: 20px 30px;
-      box-shadow: 0 4px 10px rgba(255,255,255,0.1);
-      max-width: 600px;
-      text-align: left;
-      margin-bottom: 20px;
-    }
-    h1 {
-      color: #f9d342;
-    }
-    h2 {
-      color: #f0a500;
-      margin-top: 15px;
-    }
-    p {
-      line-height: 1.6;
-      margin: 5px 0;
-    }
-    footer {
-      margin-top: 20px;
-      color: #999;
-      font-size: 0.8rem;
-    }
-  </style>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>NASCAR Schedule</title>
+<style>
+  body {
+    font-family: system-ui, sans-serif;
+    background-color: #111;
+    color: #eee;
+    margin: 0;
+    padding: 1rem;
+  }
+  #header {
+    position: sticky;
+    top: 0;
+    background-color: #111;
+    z-index: 100;
+    padding: 0.5rem 0;
+    border-bottom: 1px solid #333;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.5);
+    text-align: center;
+  }
+  h2 {
+    margin: 0.5rem 0;
+  }
+
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-bottom: 1.5rem;
+    font-size: 0.9rem;
+  }
+  th, td {
+    border: 1px solid #333;
+    padding: 0.4rem;
+    text-align: center;
+  }
+  th {
+    background-color: #222;
+    color: #ffcc00;
+  }
+  tr:nth-child(even) { background-color: #1a1a1a; }
+  tr:hover { background-color: #333; }
+
+  /* Navigation bar */
+  .nav-bar {
+    display: flex;
+    justify-content: center;
+    margin-top: 0.5rem;
+    gap: 15px;
+  }
+  .nav-link {
+    color: #ffcc00;
+    text-decoration: none;
+    font-weight: bold;
+    padding: 5px 12px;
+    border: 1px solid transparent;
+    border-radius: 4px;
+    transition: all 0.2s;
+  }
+  .nav-link:hover {
+    background-color: #ffcc00;
+    color: #111;
+    border-color: #ffcc00;
+  }
+  .nav-link.active {
+    background-color: #ffcc00;
+    color: #111;
+    border-color: #ffcc00;
+  }
+</style>
 </head>
 <body>
-  <div class="card">
-    <h1>🏁 Next NASCAR Races</h1>
-    <div id="race-info">Loading...</div>
-  </div>
-  <footer>Data from NASCAR.com JSON feeds</footer>
 
-  <script>
-    const proxy = "https://corsproxy.io/?";
-    const raceListUrl = proxy + encodeURIComponent("https://cf.nascar.com/cacher/2025/race_list_basic.json");
+<div id="header">
+  <h2>🏁 NASCAR Schedule</h2>
+  <nav class="nav-bar">
+    <a href="index.html" class="nav-link">Live Race Tracker</a>
+    <a href="schedules.html" class="nav-link active">Schedule</a>
+    <a href="live-points.html" class="nav-link">Live Points</a>
+  </nav>
+</div>
 
-    // Map series keys to human-readable names
-    const seriesMap = {
-      "series_1": "NASCAR Cup Series",
-      "series_2": "NASCAR Xfinity Series",
-      "series_3": "NASCAR Craftsman Truck Series"
-    };
+<h2>Upcoming Races</h2>
+<table id="schedule-table">
+  <thead>
+    <tr>
+      <th>Series</th>
+      <th>Race</th>
+      <th>Track</th>
+      <th>Date / Time</th>
+    </tr>
+  </thead>
+  <tbody>
+    <!-- Schedule rows will go here -->
+    <tr>
+      <td>Cup Series</td>
+      <td>South Point 400</td>
+      <td>Las Vegas Motor Speedway</td>
+      <td>10/26/25 2:00 PM</td>
+    </tr>
+    <tr>
+      <td>Xfinity Series</td>
+      <td>Example Race</td>
+      <td>Daytona International Speedway</td>
+      <td>11/02/25 1:00 PM</td>
+    </tr>
+    <!-- Add more races as needed -->
+  </tbody>
+</table>
 
-    async function loadNextRaces() {
-      const infoDiv = document.getElementById("race-info");
-      try {
-        const res = await fetch(raceListUrl);
-        if (!res.ok) throw new Error("Network response not ok");
-
-        const raceListRaw = await res.json();
-
-        let htmlContent = "";
-
-        for (const [key, seriesName] of Object.entries(seriesMap)) {
-          const races = raceListRaw[key] || [];
-          const now = new Date();
-          const upcomingRaces = races
-            .map(r => ({ ...r, dateObj: new Date(r.race_date) }))
-            .filter(r => r.dateObj > now)
-            .sort((a, b) => a.dateObj - b.dateObj);
-
-          if (upcomingRaces.length === 0) {
-            htmlContent += `<h2>${seriesName}</h2><p>No upcoming race found.</p>`;
-            continue;
-          }
-
-          const nextRace = upcomingRaces[0];
-          const raceDate = new Date(nextRace.race_date);
-          const formattedDate = raceDate.toLocaleString("en-US", {
-            month: "numeric",
-            day: "numeric",
-            year: "2-digit",
-            hour: "numeric",
-            minute: "2-digit",
-            hour12: true
-          });
-
-          htmlContent += `
-            <h2>${seriesName}</h2>
-            <p><strong>Next Race:</strong> ${nextRace.race_name}</p>
-            <p><strong>Track:</strong> ${nextRace.track_name}</p>
-            <p><strong>Race Date:</strong> ${formattedDate}</p>
-            <p><strong>Laps:</strong> ${nextRace.scheduled_laps}</p>
-            <p><strong>Stage 1:</strong> ${nextRace.stage_1_laps || "N/A"}</p>
-            <p><strong>Stage 2:</strong> ${nextRace.stage_2_laps || "N/A"}</p>
-            <p><strong>Stage 3:</strong> ${nextRace.stage_3_laps || "N/A"}</p>
-          `;
-        }
-
-        infoDiv.innerHTML = htmlContent;
-
-      } catch (err) {
-        infoDiv.innerHTML = "Error loading race data (check console).";
-        console.error("Fetch error:", err);
-      }
-    }
-
-    loadNextRaces();
-  </script>
 </body>
 </html>
