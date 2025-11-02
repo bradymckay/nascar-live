@@ -191,7 +191,6 @@ function updatePointsTable(points) {
 
   drivers.forEach((d, idx) => {
     const behind = d.points_position === 1 ? 0 : leaderPoints - d.points;
-    let vsFourth = idx < 8 ? (d.points - fourthPoints >= 0 ? "+" : "") + (d.points - fourthPoints) : "-";
 
     const row = document.createElement("tr");
     row.innerHTML = `
@@ -200,8 +199,8 @@ function updatePointsTable(points) {
       <td>${d.car_number ?? "-"}</td>
       <td>${d.points ?? "-"}</td>
       <td>${behind === 0 ? "Leader" : "-" + behind}</td>
-      //<td>${vsFourth}</td>
     `;
+    
     tbody.appendChild(row);
   });
 }
