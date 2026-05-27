@@ -5,116 +5,282 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Cup Series Live Points</title>
   <style>
-    body { background-color: #111; color: #f3f4f6; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; margin: 0; padding: 20px; }
-    h2 { color: #facc15; text-align: center; margin-bottom: 0.5rem; text-transform: uppercase; letter-spacing: 1px; }
+    body {
+      font-family: Arial, sans-serif;
+      background-color: #0b0b0b;
+      color: #fff;
+      padding: 20px;
+      margin: 0;
+    }
+    h1 { 
+      color: #f9d342;
+      text-align: center;
+      margin-bottom: 0.5rem;
+    }
     
-    .nav-bar { display: flex; justify-content: center; margin-bottom: 20px; gap: 15px; }
-    .nav-link { color: #facc15; text-decoration: none; font-weight: bold; padding: 8px 16px; border: 2px solid transparent; border-radius: 6px; transition: all 0.2s; }
-    .nav-link:hover, .nav-link.active { background-color: #facc15; color: #111; border-color: #facc15; }
+    table {
+      border-collapse: collapse;
+      width: 100%;
+      max-width: 1000px;
+      margin: 1rem auto;
+      font-size: 0.9rem;
+    }
+    th, td {
+      border: 1px solid #444;
+      padding: 8px;
+      text-align: left;
+    }
+    th { 
+      background-color: #222;
+      color: #f9d342;
+      font-weight: bold;
+    }
+    tr:nth-child(even) { background-color: #181818; }
+    tr:hover { background-color: #333; }
     
-    .controls { text-align: center; margin-bottom: 20px; background-color: #1f2937; padding: 15px; border-radius: 8px; border: 1px solid #374151; max-width: 900px; margin-left: auto; margin-right: auto; }
-    select { padding: 10px; background: #111827; color: #facc15; border: 1px solid #374151; border-radius: 6px; font-size: 1rem; font-weight: bold; cursor: pointer; outline: none; }
-    
-    table { width: 100%; max-width: 900px; margin: 0 auto; border-collapse: collapse; font-size: 0.95rem; background-color: #1f2937; border-radius: 8px; overflow: hidden; }
-    th, td { padding: 12px 10px; text-align: center; border-bottom: 1px solid #374151; }
-    th { background-color: #111827; color: #facc15; text-transform: uppercase; font-size: 0.85rem; border-bottom: 2px solid #facc15; }
-    tr:hover { background-color: #374151; }
-    
-    #loading-msg { text-align: center; color: #9ca3af; font-style: italic; }
+    .nav-bar {
+      display: flex;
+      justify-content: center;
+      margin-bottom: 1.5rem;
+      gap: 15px;
+    }
+    .nav-link {
+      color: #f9d342;
+      text-decoration: none;
+      font-weight: bold;
+      padding: 5px 12px;
+      border: 1px solid transparent;
+      border-radius: 4px;
+      transition: all 0.2s;
+    }
+    .nav-link:hover {
+      background-color: #f9d342;
+      color: #111;
+      border-color: #f9d342;
+    }
+    .nav-link.active {
+      background-color: #f9d342;
+      color: #111;
+      border-color: #f9d342;
+    }
+
+    /* Race selector */
+    .race-selector {
+      display: flex;
+      justify-content: center;
+      gap: 10px;
+      margin: 1rem 0;
+      flex-wrap: wrap;
+    }
+    select {
+      padding: 8px 12px;
+      background-color: #222;
+      color: #f9d342;
+      border: 1px solid #f9d342;
+      border-radius: 4px;
+      font-weight: bold;
+      cursor: pointer;
+      font-size: 1rem;
+    }
+    select:hover {
+      background-color: #333;
+    }
+
+    .container {
+      max-width: 1000px;
+      margin: 0 auto;
+    }
+
+    .status-info {
+      text-align: center;
+      color: #f9d342;
+      margin: 0.5rem 0;
+      font-weight: bold;
+    }
+
+    h2 {
+      color: #f9d342;
+      text-align: center;
+      margin-top: 2rem;
+      margin-bottom: 1rem;
+    }
   </style>
 </head>
 <body>
 
-  <h2>🏆 Live Points Standings</h2>
-  
+<div class="container">
+  <h1>🏁 NASCAR Cup Series Points Standings</h1>
+
   <nav class="nav-bar">
-    <a href="index.html" class="nav-link">Live Ticker</a>
+    <a href="index.html" class="nav-link">Live Race Tracker</a>
     <a href="schedules.html" class="nav-link">Schedule</a>
     <a href="live-points.html" class="nav-link active">Live Points</a>
   </nav>
 
-  <div class="controls">
-    <label for="race-selector" style="margin-right: 10px; font-weight: bold;">Select Race Event:</label>
-    <select id="race-selector">
-      <option value="">Loading 2026 Season...</option>
+  <!-- Race Selector -->
+  <div class="race-selector">
+    <select id="raceYear">
+      <option value="2026">2026</option>
+      <option value="2025">2025</option>
+    </select>
+    <select id="raceSelector">
+      <option value="">Select a Race...</option>
     </select>
   </div>
 
-  <div id="points-container">
-    <div id="loading-msg">Select a race to view points...</div>
+  <div class="status-info" id="raceInfo">Select a race to view points standings</div>
+
+  <div id="live-points">
+    <p style="text-align: center; color: #f9d342;">Loading...</p>
   </div>
+</div>
 
 <script>
-  const raceListUrl = "https://api.allorigins.win/raw?url=https://cf.nascar.com/cacher/2026/race_list_basic.json";
-  const selector = document.getElementById("race-selector");
-  const container = document.getElementById("points-container");
+  let currentRaceId = null;
+  let allRaces = [];
+  const container = document.getElementById("live-points");
 
-  async function init() {
+  // Fetch available races on page load
+  async function loadRaceList() {
     try {
-      const res = await fetch(raceListUrl);
+      const year = document.getElementById("raceYear").value;
+      const url = `https://api.allorigins.win/raw?url=https://cf.nascar.com/cacher/${year}/race_list_basic.json`;
+      const res = await fetch(url);
       const data = await res.json();
-      
-      // Filter for Cup Series (series_1) and reverse to show most recent first
-      const cupRaces = data.series_1.reverse(); 
 
-      selector.innerHTML = cupRaces.map(r => 
-        `<option value="${r.race_id}">${r.race_name} - ${r.track_name}</option>`
-      ).join('');
+      allRaces = data.series_1 || [];
+      populateRaceSelector();
       
-      // Auto-load the most recent/current race
-      if(selector.value) loadLivePoints(selector.value);
-      
+      // Auto-select the most recent/live race
+      const now = new Date();
+      const liveRace = allRaces.find(r => new Date(r.race_date) >= now);
+      if (liveRace) {
+        document.getElementById("raceSelector").value = liveRace.race_id;
+        currentRaceId = liveRace.race_id;
+        loadLivePoints();
+      }
     } catch (err) {
-      console.error(err);
-      selector.innerHTML = `<option>Error loading schedule</option>`;
+      console.error("Error loading race list:", err);
+      container.innerHTML = "⚠️ Error loading race list. Please try again.";
     }
   }
 
-  async function loadLivePoints(raceId) {
-    container.innerHTML = `<div id="loading-msg">Fetching points data for Race ID ${raceId}...</div>`;
-    try {
-      const url = `https://api.allorigins.win/raw?url=https://cf.nascar.com/live/feeds/series_1/${raceId}/live_points.json`;
-      const res = await fetch(url);
-      const data = await res.json();
-      const drivers = data.vehicles || data;
+  function populateRaceSelector() {
+    const selector = document.getElementById("raceSelector");
+    selector.innerHTML = '<option value="">Select a Race...</option>';
+    
+    allRaces.forEach(race => {
+      const option = document.createElement("option");
+      option.value = race.race_id;
+      const raceDate = new Date(race.race_date).toLocaleDateString();
+      option.textContent = `${race.race_id} - ${race.race_name} (${raceDate})`;
+      selector.appendChild(option);
+    });
+  }
 
-      if (!drivers || drivers.length === 0) {
-        container.innerHTML = `<div id="loading-msg">No points data available for this event yet.</div>`;
+  document.getElementById("raceYear").addEventListener("change", loadRaceList);
+  document.getElementById("raceSelector").addEventListener("change", (e) => {
+    currentRaceId = e.target.value;
+    if (currentRaceId) {
+      loadLivePoints();
+    } else {
+      container.innerHTML = '<p style="text-align: center; color: #f9d342;">Please select a race.</p>';
+    }
+  });
+
+  async function loadLivePoints() {
+    try {
+      if (!currentRaceId) {
+        container.innerHTML = '<p style="text-align: center; color: #f9d342;">Please select a race.</p>';
         return;
       }
 
-      let html = `<table>
-        <tr>
-          <th>Rank</th>
-          <th>Driver</th>
-          <th>Total Points</th>
-          <th>Points Earned</th>
-          <th>Wins</th>
-          <th>Top 5</th>
-          <th>Top 10</th>
-        </tr>`;
+      // Find race info
+      const race = allRaces.find(r => r.race_id == currentRaceId);
+      if (race) {
+        const raceDate = new Date(race.race_date).toLocaleDateString();
+        document.getElementById("raceInfo").textContent = `${race.race_name} - ${race.track_name} (${raceDate})`;
+      }
 
-      drivers.sort((a,b) => a.points_position - b.points_position).forEach(d => {
+      const pointsUrl = `https://api.allorigins.win/raw?url=https://cf.nascar.com/live/feeds/series_1/${currentRaceId}/live_points.json`;
+      
+      const res = await fetch(pointsUrl);
+      if (!res.ok) throw new Error(`Failed to fetch: ${res.status}`);
+      
+      const data = await res.json();
+
+      // Get all drivers (or filter by series_id if needed)
+      const cupDrivers = (data.vehicles || data);
+      
+      if (!cupDrivers || cupDrivers.length === 0) {
+        container.innerHTML = "⚠️ No points data available for this race yet.";
+        return;
+      }
+
+      // Sort by points position
+      cupDrivers.sort((a, b) => {
+        const posA = a.points_position || 999;
+        const posB = b.points_position || 999;
+        return posA - posB;
+      });
+
+      // Get leader points for "Behind" calculation
+      const leaderPoints = cupDrivers[0]?.points || 0;
+
+      let html = `<table>
+        <thead>
+          <tr>
+            <th>Pos</th>
+            <th>Driver</th>
+            <th>Car #</th>
+            <th>Season Points</th>
+            <th>This Race</th>
+            <th>Behind Leader</th>
+            <th>Wins</th>
+            <th>Top 5s</th>
+            <th>Top 10s</th>
+            <th>Poles</th>
+          </tr>
+        </thead>
+        <tbody>`;
+
+      cupDrivers.forEach(d => {
+        const behind = d.points_position === 1 ? "Leader" : (leaderPoints - (d.points || 0));
+        const behindText = behind === "Leader" ? behind : "-" + behind;
+
         html += `<tr>
-          <td><strong>${d.points_position ?? '-'}</strong></td>
-          <td style="text-align: left;">${d.first_name} ${d.last_name}</td>
-          <td style="font-weight: bold; color: #4ade80;">${d.points ?? 0}</td>
+          <td>${d.points_position ?? '-'}</td>
+          <td>${d.first_name} ${d.last_name}</td>
+          <td>${d.car_number ?? '-'}</td>
+          <td><strong>${d.points ?? 0}</strong></td>
           <td>${d.points_earned_this_race ?? 0}</td>
+          <td>${behindText}</td>
           <td>${d.wins ?? 0}</td>
           <td>${d.top_5 ?? 0}</td>
           <td>${d.top_10 ?? 0}</td>
+          <td>${d.poles ?? 0}</td>
         </tr>`;
       });
-      
-      html += "</table>";
+
+      html += `</tbody></table>`;
       container.innerHTML = html;
+
     } catch (err) {
-      container.innerHTML = `<div id="loading-msg" style="color:#f87171;">⚠️ Could not load points. The race may not have started.</div>`;
+      console.error("Error loading Cup data:", err);
+      container.innerHTML = "⚠️ Error loading Cup Series data. Please try again later.";
     }
   }
 
-  selector.addEventListener('change', (e) => loadLivePoints(e.target.value));
-  init();
+  // Load initial race list
+  loadRaceList();
+
+  // Auto-refresh every 60 seconds
+  setInterval(() => {
+    if (currentRaceId) {
+      loadLivePoints();
+    }
+  }, 60000);
 </script>
+
 </body>
 </html>
