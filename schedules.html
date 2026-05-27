@@ -5,108 +5,42 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <title>NASCAR Schedule</title>
 <style>
-  body {
-    font-family: system-ui, sans-serif;
-    background-color: #111;
-    color: #eee;
-    margin: 0;
-    padding: 1rem;
-  }
-  #header {
-    position: sticky;
-    top: 0;
-    background-color: #111;
-    z-index: 100;
-    padding: 0.5rem 0;
-    border-bottom: 1px solid #333;
-    box-shadow: 0 2px 5px rgba(0,0,0,0.5);
-    text-align: center;
-  }
-  h2 {
-    margin: 0.5rem 0;
-  }
-
-  table {
-    width: 100%;
-    border-collapse: collapse;
-    margin-bottom: 1.5rem;
-    font-size: 0.9rem;
-  }
-  th, td {
-    border: 1px solid #333;
-    padding: 0.4rem;
-    text-align: center;
-  }
-  th {
-    background-color: #222;
-    color: #ffcc00;
-  }
-  tr:nth-child(even) { background-color: #1a1a1a; }
-  tr:hover { background-color: #333; }
-
-  /* Navigation bar */
-  .nav-bar {
-    display: flex;
-    justify-content: center;
-    margin-top: 0.5rem;
-    gap: 15px;
-  }
-  .nav-link {
-    color: #ffcc00;
-    text-decoration: none;
-    font-weight: bold;
-    padding: 5px 12px;
-    border: 1px solid transparent;
-    border-radius: 4px;
-    transition: all 0.2s;
-  }
-  .nav-link:hover {
-    background-color: #ffcc00;
-    color: #111;
-    border-color: #ffcc00;
-  }
-  .nav-link.active {
-    background-color: #ffcc00;
-    color: #111;
-    border-color: #ffcc00;
-  }
+  body { background-color: #111; color: #f3f4f6; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; margin: 0; padding: 20px; }
+  h2 { color: #facc15; text-align: center; margin-bottom: 1.5rem; text-transform: uppercase; letter-spacing: 1px; }
+  
+  .nav-bar { display: flex; justify-content: center; margin-bottom: 20px; gap: 15px; }
+  .nav-link { color: #facc15; text-decoration: none; font-weight: bold; padding: 8px 16px; border: 2px solid transparent; border-radius: 6px; transition: all 0.2s; }
+  .nav-link:hover, .nav-link.active { background-color: #facc15; color: #111; border-color: #facc15; }
+  
+  table { width: 100%; max-width: 1000px; margin: 0 auto 30px auto; border-collapse: collapse; font-size: 0.95rem; background-color: #1f2937; border-radius: 8px; overflow: hidden; }
+  th, td { padding: 12px 10px; text-align: center; border-bottom: 1px solid #374151; }
+  th { background-color: #111827; color: #facc15; text-transform: uppercase; font-size: 0.85rem; border-bottom: 2px solid #facc15; }
+  tr:hover { background-color: #374151; }
+  .next-race-row { background-color: #374151; font-weight: bold; border-left: 4px solid #4ade80; }
 </style>
 </head>
 <body>
 
-<div id="header">
-  <h2>🏁 NASCAR Schedule</h2>
+  <h2>📅 2026 Season Schedule</h2>
   <nav class="nav-bar">
-    <a href="index.html" class="nav-link">Live Race Tracker</a>
+    <a href="index.html" class="nav-link">Live Ticker</a>
     <a href="schedules.html" class="nav-link active">Schedule</a>
     <a href="live-points.html" class="nav-link">Live Points</a>
   </nav>
-</div>
 
-<h2>Upcoming Races</h2>
-<table id="schedule-table">
-  <thead>
-    <tr>
-      <th>Series</th>
-      <th>Race</th>
-      <th>Track</th>
-      <th>Date / Time</th>
-    </tr>
-  </thead>
-  <tbody></tbody>
-</table>
-
-<h2>Completed Races</h2>
-<table id="completed-table">
-  <thead>
-    <tr>
-      <th>Cup Series</th>
-      <th>Xfinity Series</th>
-      <th>Truck Series</th>
-    </tr>
-  </thead>
-  <tbody></tbody>
-</table>
+  <table id="schedule-table">
+    <thead>
+      <tr>
+        <th>Series</th>
+        <th>Race Name</th>
+        <th>Track</th>
+        <th>Date / Time</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr><td colspan="4">Loading schedule data...</td></tr>
+    </tbody>
+  </table>
 
 <script>
 const raceListUrl = "https://api.allorigins.win/raw?url=https://cf.nascar.com/cacher/2026/race_list_basic.json";
@@ -114,96 +48,42 @@ const raceListUrl = "https://api.allorigins.win/raw?url=https://cf.nascar.com/ca
 async function loadSchedule() {
   try {
     const res = await fetch(raceListUrl);
-    if (!res.ok) throw new Error("Failed to fetch race list");
     const raceList = await res.json();
-
-    const seriesMap = {
-      series_1: "NASCAR Cup Series",
-      series_2: "NASCAR O'Reilly Auto Parts Series",
-      series_3: "NASCAR Craftsman Truck Series"
-    };
-
+    const seriesMap = { series_1: "Cup Series", series_2: "Xfinity Series", series_3: "Truck Series" };
     const tbody = document.querySelector("#schedule-table tbody");
     tbody.innerHTML = "";
 
-    // --- NEXT RACE TABLE ---
-    Object.entries(seriesMap).forEach(([seriesKey, seriesName]) => {
-      const races = raceList[seriesKey] || [];
-      const now = new Date();
+    const now = new Date();
 
-      const upcoming = races
+    Object.entries(seriesMap).forEach(([key, name]) => {
+      // Get upcoming races for this series
+      const upcoming = (raceList[key] || [])
         .map(r => ({ ...r, dateObj: new Date(r.race_date) }))
         .filter(r => r.dateObj > now)
         .sort((a,b) => a.dateObj - b.dateObj);
 
       if (upcoming.length > 0) {
-        const nextRace = upcoming[0];
-        const dateTimeStr = nextRace.dateObj.toLocaleString('en-US', {
-          month:'2-digit', day:'2-digit', year:'2-digit',
-          hour:'numeric', minute:'2-digit', hour12:true
-        });
+        const next = upcoming[0];
+        const dateStr = next.dateObj.toLocaleString('en-US', { weekday: 'short', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' });
+        
         const row = document.createElement("tr");
+        row.className = "next-race-row";
         row.innerHTML = `
-          <td>${seriesName}</td>
-          <td>${nextRace.race_name}</td>
-          <td>${nextRace.track_name}</td>
-          <td>${dateTimeStr}</td>
-        `;
-        tbody.appendChild(row);
-      } else {
-        const row = document.createElement("tr");
-        row.innerHTML = `
-          <td>${seriesName}</td>
-          <td colspan="3"><em>Next Race: Next Season</em></td>
+          <td style="color: #60a5fa;">${name}</td>
+          <td>${next.race_name}</td>
+          <td>${next.track_name}</td>
+          <td>${dateStr}</td>
         `;
         tbody.appendChild(row);
       }
     });
-
-    // --- COMPLETED RACES TABLE ---
-    const completedTbody = document.querySelector("#completed-table tbody");
-    completedTbody.innerHTML = "";
-
-    const completedData = {};
-    Object.keys(seriesMap).forEach(key => {
-      const races = raceList[key] || [];
-      completedData[key] = races
-        .map(r => ({ ...r, dateObj: new Date(r.race_date) }))
-        .filter(r => r.dateObj < new Date())
-        .sort((a,b) => a.dateObj - b.dateObj);
-    });
-
-    const maxRows = Math.max(
-      completedData.series_1.length,
-      completedData.series_2.length,
-      completedData.series_3.length
-    );
-
-    for (let i = 0; i < maxRows; i++) {
-      const cup = completedData.series_1[i];
-      const xfin = completedData.series_2[i];
-      const truck = completedData.series_3[i];
-
-      const row = document.createElement("tr");
-      row.innerHTML = `
-        <td>${cup ? `${cup.race_name} - ${cup.track_name} (${new Date(cup.race_date).toLocaleDateString()})` : ""}</td>
-        <td>${xfin ? `${xfin.race_name} - ${xfin.track_name} (${new Date(xfin.race_date).toLocaleDateString()})` : ""}</td>
-        <td>${truck ? `${truck.race_name} - ${truck.track_name} (${new Date(truck.race_date).toLocaleDateString()})` : ""}</td>
-      `;
-      completedTbody.appendChild(row);
-    }
-
   } catch (err) {
     console.error(err);
-    document.querySelector("#schedule-table tbody").innerHTML =
-      `<tr><td colspan="4">Error loading schedule.</td></tr>`;
-    document.querySelector("#completed-table tbody").innerHTML =
-      `<tr><td colspan="3">Error loading completed races.</td></tr>`;
+    document.querySelector("#schedule-table tbody").innerHTML = `<tr><td colspan="4" style="color: #f87171;">Failed to load schedule.</td></tr>`;
   }
 }
 
 loadSchedule();
 </script>
-
 </body>
 </html>
