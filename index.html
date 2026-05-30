@@ -113,8 +113,8 @@ function updateRaceTable(feed) {
       const driver = v.driver?.full_name || "Unknown";
       
       // Calculate Laps Led with Pole Sitter offset
-      let lapsLedVal = v.laps_led?.length ? v.laps_led.reduce((sum, l) => sum + (l.end_lap - l.start_lap), 0) : 0;
-      if (v.starting_position === 1 && lapsLedVal > 0) lapsLedVal -= 1;
+      let lapsLedVal = v.laps_led?.length ? v.laps_led.reduce((sum, l) => sum + (l.end_lap - l.start_lap - 1), 0) : 0;
+      if (v.starting_position === 1 && lapsLedVal > 0) lapsLedVal -= 0;
       const lapsLed = lapsLedVal > 0 ? lapsLedVal : "-";
       
       const hasFastest = v.best_lap_time === fastestLapTime && v.best_lap_time > 0;
