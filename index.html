@@ -87,7 +87,7 @@
 <div class="race-header">
     <div class="title-group">
         <h1 id="race-name">Loading Race...</h1>
-        <p id="race-meta">Nashville Superspeedway • NASCAR Cup Series</p>
+        <p id="race-meta">NASCAR Cup Series Telemetry</p>
     </div>
     <div class="stat-block">
         <div class="stat-label">Lap</div>
@@ -150,13 +150,21 @@ async function streamTelemetry() {
         const response = await fetch(FEED_URL);
         const data = await response.json();
         
-        // Header Updates
-        document.getElementById("race-name").textContent = data.run_name;
-        document.getElementById("lap-val").textContent = `${data.lap_number}/${data.laps_in_race}`;
-        document.getElementById("togo-val").textContent = data.laps_in_race - data.lap_number;
+        if (!data || !data.vehicles) {
+            console.warn("Telemetry data missing expected 'vehicles' property.");
+            return;
+        }
+
+        // Header Updates with robust fallbacks
+        document.getElementById("race-name").textContent = data.run_name || "NASCAR Cup Race";
+        document.getElementById("lap-val").textContent = `${data.lap_number || 0}/${data.laps_in_race || 0}`;
+        
+        const lapsInRace = data.laps_in_race || 0;
+        const currentLap = data.lap_number || 0;
+        document.getElementById("togo-val").textContent = Math.max(0, lapsInRace - currentLap);
         
         const stageTarget = data.stage?.target_lap || 0;
-        const lapsToStage = stageTarget - data.lap_number;
+        const lapsToStage = stageTarget - currentLap;
         document.getElementById("stage-val").textContent = lapsToStage > 0 ? lapsToStage : "--";
 
         const flag = document.getElementById("flag-indicator");
@@ -164,44 +172,70 @@ async function streamTelemetry() {
         flag.textContent = state === 2 ? "YELLOW" : (state === 1 ? "GREEN" : "CAUTION");
         flag.className = state === 2 ? "yellow-flag" : "green-flag";
 
-        // Table Data
+        // Table Data rendering
         const tbody = document.getElementById("race-body");
         tbody.innerHTML = "";
 
-        const sortedVehicles = data.vehicles.sort((a, b) => a.running_position - b.running_position);
-        const uniqueLeaders = new Set(data.vehicles.filter(v => v.laps_led && v.laps_led.length > 0).map(v => v.driver.driver_id));
+        // Sort dynamically by running position to lock the leaderboard layout
+        const sortedVehicles = data.vehicles.sort((a, b) => {
+            return (a.running_position || 99) - (b.running_position || 99);
+        });
+        
+        // Count unique leaders safely
+        const uniqueLeaders = new Set(
+            data.vehicles
+                .filter(v => v.laps_led && v.laps_led.length > 0 && v.driver)
+                .map(v => v.driver.driver_id)
+        );
         document.getElementById("lead-count").textContent = uniqueLeaders.size;
 
         sortedVehicles.forEach(v => {
             const row = document.createElement("tr");
-            if (v.running_position === 1) row.className = "leader-row";
+            const runPos = v.running_position || "-";
+            if (runPos === 1) row.className = "leader-row";
 
-            const diff = v.starting_position - v.running_position;
-            const deltaHtml = diff > 0 ? `<span class="gain">▲${diff}</span>` : (diff < 0 ? `<span class="loss">▼${Math.abs(diff)}</span>` : '');
+            // Safe Position Gain/Loss Delta (▲/▼)
+            const startPos = v.starting_position || 0;
+            const currentPos = v.running_position || 0;
+            const diff = startPos - currentPos;
+            let deltaHtml = '';
+            if (startPos && currentPos) {
+                deltaHtml = diff > 0 ? `<span class="gain">▲${diff}</span>` : (diff < 0 ? `<span class="loss">▼${Math.abs(diff)}</span>` : '');
+            }
 
             const mfrs = { 1: "Chv", 2: "Frd", 3: "Tyt" };
             const mfrText = mfrs[v.vehicle_manufacturer] || "Chv";
+            const driverName = v.driver?.full_name || "Driver Unavailable";
+            const carNum = v.vehicle_number || "-";
+
+            // Array safely fallback logic for missing metrics
+            const pitStopsCount = v.pit_stops ? v.pit_stops.length : 0;
+            const lapsLedCount = v.laps_led ? v.laps_led.reduce((a, b) => a + ((b.end_lap || 0) - (b.start_lap || 0)), 0) : 0;
+            
+            const bestLap = v.best_lap_time ? v.best_lap_time.toFixed(3) : "0.000";
+            const lastLap = v.last_lap_time ? v.last_lap_time.toFixed(3) : "0.000";
+            const intervalVal = v.delta > 0 ? '+' + v.delta.toFixed(3) : (v.delta === 0 || runPos === 1 ? "Leader" : "-");
 
             row.innerHTML = `
-                <td><div class="pos-cell"><span>${v.running_position}</span> ${deltaHtml}</div></td>
-                <td><strong>#${v.vehicle_number}</strong></td>
+                <td><div class="pos-cell"><span>${runPos}</span> ${deltaHtml}</div></td>
+                <td><strong>#${carNum}</strong></td>
                 <td class="driver-info">
-                    <strong>${v.driver.full_name}</strong>
+                    <strong>${driverName}</strong>
                     <span class="mfr-text">${mfrText}</span>
                 </td>
-                <td>${v.running_position === 1 ? 'Leader' : '+' + v.delta.toFixed(3)}</td>
-                <td>${v.laps_completed}</td>
+                <td>${intervalVal}</td>
+                <td>${v.laps_completed ?? 0}</td>
                 <td><div class="status-pill"><div class="dot"></div> Running</div></td>
-                <td>${v.pit_stops ? v.pit_stops.length : 0}</td>
-                <td>${v.laps_led ? v.laps_led.reduce((a, b) => a + (b.end_lap - b.start_lap), 0) : 0}</td>
-                <td>${v.best_lap_time ? v.best_lap_time.toFixed(3) : "0.000"}</td>
-                <td>${v.last_lap_time ? v.last_lap_time.toFixed(3) : "0.000"}</td>
+                <td>${pitStopsCount}</td>
+                <td>${lapsLedCount > 0 ? lapsLedCount : 0}</td>
+                <td>${bestLap}</td>
+                <td>${lastLap}</td>
             `;
             tbody.appendChild(row);
         });
 
     } catch (error) {
-        console.error("Telemetry Error:", error);
+        console.error("Telemetry Processing Error:", error);
     }
 }
 
@@ -226,7 +260,7 @@ function toggleStream() {
     }
 }
 
-// Start immediately with 3s refresh
+// Initialize loop at the verified 3-second intervals
 streamInterval = setInterval(streamTelemetry, 3000);
 streamTelemetry();
 </script>
