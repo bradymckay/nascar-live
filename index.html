@@ -3,85 +3,91 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>NASCAR Live</title>
+  <title>NASCAR Live Feed</title>
   <style>
-    :root {
-      --nascar-blue: #007bff;
-      --bg-gray: #f8f9fa;
-      --border-gray: #dee2e6;
-    }
-    body { background-color: var(--bg-gray); color: #333; font-family: 'Inter', sans-serif; margin: 0; }
+    :root { --nascar-blue: #007bff; --bg-gray: #f4f7f9; --border: #e1e4e8; }
+    body { background-color: var(--bg-gray); color: #333; font-family: -apple-system, system-ui, BlinkMacSystemFont, "Segoe UI", Roboto; margin: 0; }
     
-    /* Top Header */
-    .header-black { background: #000; color: white; padding: 10px 40px; display: flex; justify-content: space-between; align-items: center; }
-    .header-info { background: white; padding: 20px 40px; border-bottom: 1px solid var(--border-gray); display: flex; gap: 50px; align-items: center; }
+    /* Top Black Bar */
+    .header-black { background: #111; color: white; padding: 12px 40px; display: flex; justify-content: space-between; align-items: center; font-size: 0.9rem; }
     
-    /* Race Banner Components */
-    .race-title h1 { margin: 0; font-size: 1.5rem; color: #000; }
-    .race-title p { margin: 0; color: #666; font-size: 0.9rem; }
-    .stat-box { text-align: center; }
-    .stat-label { font-size: 0.75rem; color: #666; text-transform: uppercase; }
-    .stat-value { font-size: 1.4rem; font-weight: bold; }
-    .flag-indicator { background: #ffc107; color: black; padding: 10px 30px; border-radius: 8px; font-weight: bold; }
+    /* Race Banner */
+    .race-header { background: white; padding: 25px 40px; border-bottom: 1px solid var(--border); display: flex; align-items: center; gap: 60px; }
+    .title-group h1 { margin: 0; font-size: 1.6rem; letter-spacing: -0.5px; }
+    .title-group p { margin: 4px 0 0; color: #666; font-size: 0.9rem; }
+    
+    .stat-block { text-align: center; }
+    .stat-label { font-size: 0.7rem; color: #888; text-transform: uppercase; font-weight: 600; margin-bottom: 2px; }
+    .stat-value { font-size: 1.4rem; font-weight: 800; color: #111; }
+    .stat-sub { font-size: 0.7rem; color: #888; margin-top: -2px; }
 
-    /* Tabs */
-    .tabs { padding: 0 40px; background: white; border-bottom: 1px solid var(--border-gray); }
-    .tab { display: inline-block; padding: 15px 20px; color: #666; text-decoration: none; font-weight: bold; border-bottom: 3px solid transparent; }
+    .yellow-flag { background: #ffd700; color: #000; padding: 8px 24px; border-radius: 6px; font-weight: 800; font-size: 0.9rem; }
+    .green-flag { background: #2ecc71; color: #fff; padding: 8px 24px; border-radius: 6px; font-weight: 800; font-size: 0.9rem; }
+
+    /* Navigation */
+    .nav-tabs { background: white; padding: 0 40px; border-bottom: 1px solid var(--border); }
+    .tab { display: inline-block; padding: 16px 20px; text-decoration: none; color: #666; font-weight: 700; font-size: 0.85rem; border-bottom: 3px solid transparent; }
     .tab.active { color: var(--nascar-blue); border-bottom-color: var(--nascar-blue); }
 
-    /* The Table */
-    .table-container { padding: 20px 40px; }
-    table { width: 100%; border-collapse: collapse; background: white; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.05); }
-    th { background: #2d3436; color: #fff; text-transform: uppercase; font-size: 0.75rem; padding: 12px; }
-    td { padding: 15px 10px; border-bottom: 1px solid #eee; text-align: center; font-size: 0.9rem; }
+    /* Table Styling */
+    .content { padding: 20px 40px; }
+    table { width: 100%; border-collapse: collapse; background: white; border-radius: 4px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
+    th { background: #2d3436; color: #fff; font-size: 0.7rem; text-transform: uppercase; padding: 12px; text-align: center; }
+    td { padding: 14px 10px; border-bottom: 1px solid #f0f0f0; text-align: center; font-size: 0.9rem; }
     
-    /* Specific Row Styles */
+    .pos-cell { font-weight: 800; display: flex; align-items: center; justify-content: center; gap: 5px; }
+    .gain { color: #2ecc71; font-size: 0.7rem; }
+    .loss { color: #e74c3c; font-size: 0.7rem; }
     .leader-row { background-color: #fff9e6 !important; }
-    .delta-up { color: #2ecc71; font-size: 0.7rem; }
-    .delta-down { color: #e74c3c; font-size: 0.7rem; }
-    .status-dot { height: 10px; width: 10px; background-color: #2ecc71; border-radius: 50%; display: inline-block; margin-right: 5px; }
-    .mfr { font-size: 0.7rem; color: #999; display: block; }
+    .driver-info { text-align: left !important; }
+    .mfr-text { display: block; font-size: 0.7rem; color: #999; font-weight: 400; }
+    .status-pill { display: flex; align-items: center; justify-content: center; gap: 6px; color: #2ecc71; font-weight: 600; }
+    .dot { height: 8px; width: 8px; background: #2ecc71; border-radius: 50%; }
   </style>
 </head>
 <body>
 
 <div class="header-black">
-    <div style="font-weight:bold; font-style:italic;">🏁 NASCAR Live</div>
-    <div style="font-size:0.8rem; opacity:0.7;">● Paused</div>
+    <div>🏁 <strong>NASCAR</strong> Live</div>
+    <div id="connection-status">● Live</div>
 </div>
 
-<div class="header-info">
-    <div class="race-title">
-        <h1 id="race-name">Cracker Barrel 400</h1>
-        <p id="track-name">Nashville Superspeedway • NASCAR Cup Series</p>
+<div class="race-header">
+    <div class="title-group">
+        <h1 id="race-name">Loading Race...</h1>
+        <p id="race-meta">Cup Series Telemetry</p>
     </div>
-    <div class="stat-box">
+    <div class="stat-block">
         <div class="stat-label">Lap</div>
-        <div class="stat-value" id="lap-count">--/--</div>
+        <div id="lap-val" class="stat-value">--/--</div>
     </div>
-    <div class="stat-box">
+    <div class="stat-block">
         <div class="stat-label">To Go</div>
-        <div class="stat-value" id="to-go">--</div>
+        <div id="togo-val" class="stat-value">--</div>
     </div>
-    <div class="stat-box">
+    <div class="stat-block">
         <div class="stat-label">Stage 1</div>
-        <div class="stat-value" id="stage-info">--</div>
-        <div class="stat-label">to Stage End</div>
+        <div id="stage-val" class="stat-value">--</div>
+        <div class="stat-sub">to Stage End</div>
     </div>
-    <div class="flag-indicator" id="flag-box">YELLOW</div>
+    <div class="stat-block">
+        <div class="stat-label">Leaders</div>
+        <div id="lead-count" class="stat-value">--</div>
+    </div>
+    <div id="flag-indicator" class="green-flag">GREEN</div>
 </div>
 
-<div class="tabs">
+<div class="nav-tabs">
     <a href="#" class="tab active">Live Race Feed</a>
     <a href="#" class="tab">Live Points</a>
 </div>
 
-<div class="table-container">
-    <table id="race-table">
+<div class="content">
+    <table>
         <thead>
             <tr>
-                <th>Pos</th>
-                <th>Car</th>
+                <th width="80">Pos</th>
+                <th width="80">Car</th>
                 <th>Driver</th>
                 <th>Interval</th>
                 <th>Laps</th>
@@ -92,60 +98,81 @@
                 <th>Last</th>
             </tr>
         </thead>
-        <tbody></tbody>
+        <tbody id="race-body">
+            </tbody>
     </table>
 </div>
 
 <script>
-async function updateRace() {
+const FEED_URL = "https://api.allorigins.win/raw?url=https://cf.nascar.com/live/feeds/live-feed.json";
+
+async function streamTelemetry() {
     try {
-        const res = await fetch("https://api.allorigins.win/raw?url=https://cf.nascar.com/live/feeds/live-feed.json");
-        const data = await res.json();
+        const response = await fetch(FEED_URL);
+        const data = await response.json();
         
-        // Update Header
-        document.getElementById("lap-count").textContent = `${data.lap_number}/${data.laps_in_race}`;
-        document.getElementById("to-go").textContent = data.laps_in_race - data.lap_number;
+        // 1. Update Header Stats
+        document.getElementById("race-name").textContent = data.run_name;
+        document.getElementById("lap-val").textContent = `${data.lap_number}/${data.laps_in_race}`;
+        document.getElementById("togo-val").textContent = data.laps_in_race - data.lap_number;
         
-        const tbody = document.querySelector("#race-table tbody");
+        // Flag Logic
+        const flag = document.getElementById("flag-indicator");
+        const state = data.flag_state; // 1=Green, 2=Yellow, 3=Red
+        flag.textContent = state === 2 ? "YELLOW" : (state === 1 ? "GREEN" : "CAUTION");
+        flag.className = state === 2 ? "yellow-flag" : "green-flag";
+
+        // 2. Process Drivers
+        const tbody = document.getElementById("race-body");
         tbody.innerHTML = "";
 
-        // Sort by Running Position
-        data.vehicles.sort((a,b) => a.running_position - b.running_position);
+        // Sort by running position
+        const sortedVehicles = data.vehicles.sort((a, b) => a.running_position - b.running_position);
+        
+        // Count unique leaders
+        const uniqueLeaders = new Set(data.vehicles.filter(v => v.laps_led.length > 0).map(v => v.driver.driver_id));
+        document.getElementById("lead-count").textContent = uniqueLeaders.size;
 
-        data.vehicles.forEach(v => {
-            const isLeader = v.running_position === 1;
+        sortedVehicles.forEach(v => {
             const row = document.createElement("tr");
-            if(isLeader) row.className = "leader-row";
+            if (v.running_position === 1) row.className = "leader-row";
 
-            // Map Manufacturer
-            const mfrMap = { 1: "Chv", 2: "Frd", 3: "Tyt" };
-            const mfr = mfrMap[v.vehicle_manufacturer] || "Chv";
+            // Position Delta Calculation
+            const diff = v.starting_position - v.running_position;
+            const deltaHtml = diff > 0 ? `<span class="gain">▲${diff}</span>` : (diff < 0 ? `<span class="loss">▼${Math.abs(diff)}</span>` : '');
+
+            // Mfr Map
+            const mfrs = { 1: "Chv", 2: "Frd", 3: "Tyt" };
+            const mfrText = mfrs[v.vehicle_manufacturer] || "Chv";
 
             row.innerHTML = `
-                <td>
-                    <strong>${v.running_position}</strong> 
-                    <span class="delta-up">▲${Math.abs(v.starting_position - v.running_position)}</span>
-                </td>
+                <td><div class="pos-cell"><span>${v.running_position}</span> ${deltaHtml}</div></td>
                 <td><strong>#${v.vehicle_number}</strong></td>
-                <td style="text-align:left">
+                <td class="driver-info">
                     <strong>${v.driver.full_name}</strong>
-                    <span class="mfr">${mfr}</span>
+                    <span class="mfr-text">${mfrText}</span>
                 </td>
-                <td>${isLeader ? 'Leader' : '+' + v.delta.toFixed(3)}</td>
-                <td>${data.lap_number}</td>
-                <td><span class="status-dot"></span> Running</td>
-                <td>${v.pit_stops || 0}</td>
-                <td>${v.laps_led.length}</td>
+                <td>${v.running_position === 1 ? 'Leader' : '+' + v.delta.toFixed(3)}</td>
+                <td>${v.laps_completed}</td>
+                <td><div class="status-pill"><div class="dot"></div> Running</div></td>
+                <td>${v.pit_stops.length}</td>
+                <td>${v.laps_led.reduce((a, b) => a + (b.end_lap - b.start_lap), 0)}</td>
                 <td>${v.best_lap_time.toFixed(3)}</td>
                 <td>${v.last_lap_time.toFixed(3)}</td>
             `;
             tbody.appendChild(row);
         });
-    } catch (e) { console.error("Update failed", e); }
+
+    } catch (error) {
+        console.error("Telemetry Stream Error:", error);
+        document.getElementById("connection-status").textContent = "● Reconnecting...";
+    }
 }
 
-setInterval(updateRace, 5000);
-updateRace();
+// Start the flow
+setInterval(streamTelemetry, 4000);
+streamTelemetry();
 </script>
+
 </body>
 </html>
