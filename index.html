@@ -3,151 +3,149 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>NASCAR Live Race Feed</title>
+  <title>NASCAR Live</title>
   <style>
-    body { background-color: #111; color: #f3f4f6; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; margin: 0; padding: 20px; }
-    h2 { color: #facc15; text-align: center; margin-bottom: 0.5rem; text-transform: uppercase; letter-spacing: 1px; }
+    :root {
+      --nascar-blue: #007bff;
+      --bg-gray: #f8f9fa;
+      --border-gray: #dee2e6;
+    }
+    body { background-color: var(--bg-gray); color: #333; font-family: 'Inter', sans-serif; margin: 0; }
     
-    /* Nav Bar */
-    .nav-bar { display: flex; justify-content: center; margin-bottom: 20px; gap: 15px; }
-    .nav-link { color: #facc15; text-decoration: none; font-weight: bold; padding: 8px 16px; border: 2px solid transparent; border-radius: 6px; transition: all 0.2s ease-in-out; }
-    .nav-link:hover, .nav-link.active { background-color: #facc15; color: #111; border-color: #facc15; }
+    /* Top Header */
+    .header-black { background: #000; color: white; padding: 10px 40px; display: flex; justify-content: space-between; align-items: center; }
+    .header-info { background: white; padding: 20px 40px; border-bottom: 1px solid var(--border-gray); display: flex; gap: 50px; align-items: center; }
     
-    /* Race Status Banner */
-    #status-banner { background-color: #1f2937; padding: 15px; border-radius: 8px; text-align: center; font-size: 1.2rem; font-weight: bold; margin-bottom: 20px; border: 1px solid #374151; }
-    #updated { display: block; font-size: 0.8rem; color: #9ca3af; margin-top: 5px; font-weight: normal; }
+    /* Race Banner Components */
+    .race-title h1 { margin: 0; font-size: 1.5rem; color: #000; }
+    .race-title p { margin: 0; color: #666; font-size: 0.9rem; }
+    .stat-box { text-align: center; }
+    .stat-label { font-size: 0.75rem; color: #666; text-transform: uppercase; }
+    .stat-value { font-size: 1.4rem; font-weight: bold; }
+    .flag-indicator { background: #ffc107; color: black; padding: 10px 30px; border-radius: 8px; font-weight: bold; }
 
-    /* Tables */
-    table { width: 100%; max-width: 1200px; margin: 0 auto; border-collapse: collapse; font-size: 0.95rem; background-color: #1f2937; border-radius: 8px; overflow: hidden; }
-    th, td { padding: 12px 10px; text-align: center; border-bottom: 1px solid #374151; }
-    th { background-color: #111827; color: #facc15; text-transform: uppercase; font-size: 0.85rem; letter-spacing: 0.5px; border-bottom: 2px solid #facc15; }
-    tr:hover { background-color: #374151; }
+    /* Tabs */
+    .tabs { padding: 0 40px; background: white; border-bottom: 1px solid var(--border-gray); }
+    .tab { display: inline-block; padding: 15px 20px; color: #666; text-decoration: none; font-weight: bold; border-bottom: 3px solid transparent; }
+    .tab.active { color: var(--nascar-blue); border-bottom-color: var(--nascar-blue); }
+
+    /* The Table */
+    .table-container { padding: 20px 40px; }
+    table { width: 100%; border-collapse: collapse; background: white; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.05); }
+    th { background: #2d3436; color: #fff; text-transform: uppercase; font-size: 0.75rem; padding: 12px; }
+    td { padding: 15px 10px; border-bottom: 1px solid #eee; text-align: center; font-size: 0.9rem; }
     
-    /* Status Colors */
-    .status-running { color: #4ade80; font-weight: bold; }
-    .status-off { color: #fbbf24; font-weight: bold; }
-    .status-out { color: #f87171; font-weight: bold; }
-    .fastest { color: #c084fc; font-weight: bold; }
+    /* Specific Row Styles */
+    .leader-row { background-color: #fff9e6 !important; }
+    .delta-up { color: #2ecc71; font-size: 0.7rem; }
+    .delta-down { color: #e74c3c; font-size: 0.7rem; }
+    .status-dot { height: 10px; width: 10px; background-color: #2ecc71; border-radius: 50%; display: inline-block; margin-right: 5px; }
+    .mfr { font-size: 0.7rem; color: #999; display: block; }
   </style>
 </head>
 <body>
 
-  <h2>🏁 Live Race Feed</h2>
-  <nav class="nav-bar">
-    <a class='nav-link active' href='/'>Live Ticker</a>
-    <a class='nav-link' href='/schedules'>Schedule</a>
-    <a class='nav-link' href='/live-points'>Live Points</a>
-  </nav>
+<div class="header-black">
+    <div style="font-weight:bold; font-style:italic;">🏁 NASCAR Live</div>
+    <div style="font-size:0.8rem; opacity:0.7;">● Paused</div>
+</div>
 
-  <div id="status-banner">
-    <span id="flag-status">Loading race status...</span>
-    <span id="updated">Waiting for telemetry...</span>
-  </div>
+<div class="header-info">
+    <div class="race-title">
+        <h1 id="race-name">Cracker Barrel 400</h1>
+        <p id="track-name">Nashville Superspeedway • NASCAR Cup Series</p>
+    </div>
+    <div class="stat-box">
+        <div class="stat-label">Lap</div>
+        <div class="stat-value" id="lap-count">--/--</div>
+    </div>
+    <div class="stat-box">
+        <div class="stat-label">To Go</div>
+        <div class="stat-value" id="to-go">--</div>
+    </div>
+    <div class="stat-box">
+        <div class="stat-label">Stage 1</div>
+        <div class="stat-value" id="stage-info">--</div>
+        <div class="stat-label">to Stage End</div>
+    </div>
+    <div class="flag-indicator" id="flag-box">YELLOW</div>
+</div>
 
-  <table id="race-table">
-    <thead>
-      <tr>
-        <th>Pos</th>
-        <th>Car #</th>
-        <th>Driver</th>
-        <th>Interval</th>
-        <th>Status</th>
-        <th>Laps Led</th>
-        <th>Fastest Lap</th>
-      </tr>
-    </thead>
-    <tbody></tbody>
-  </table>
+<div class="tabs">
+    <a href="#" class="tab active">Live Race Feed</a>
+    <a href="#" class="tab">Live Points</a>
+</div>
+
+<div class="table-container">
+    <table id="race-table">
+        <thead>
+            <tr>
+                <th>Pos</th>
+                <th>Car</th>
+                <th>Driver</th>
+                <th>Interval</th>
+                <th>Laps</th>
+                <th>Status</th>
+                <th>Pit</th>
+                <th>Led</th>
+                <th>Best</th>
+                <th>Last</th>
+            </tr>
+        </thead>
+        <tbody></tbody>
+    </table>
+</div>
 
 <script>
-async function fetchData() {
-  try {
-    const feedUrl = "https://api.allorigins.win/raw?url=https://cf.nascar.com/live/feeds/live-feed.json";
-    const res = await fetch(feedUrl);
-    if (!res.ok) throw new Error("Network response was not ok");
-    const feed = await res.json();
+async function updateRace() {
+    try {
+        const res = await fetch("https://api.allorigins.win/raw?url=https://cf.nascar.com/live/feeds/live-feed.json");
+        const data = await res.json();
+        
+        // Update Header
+        document.getElementById("lap-count").textContent = `${data.lap_number}/${data.laps_in_race}`;
+        document.getElementById("to-go").textContent = data.laps_in_race - data.lap_number;
+        
+        const tbody = document.querySelector("#race-table tbody");
+        tbody.innerHTML = "";
 
-    updateStatus(feed);
-    updateRaceTable(feed);
+        // Sort by Running Position
+        data.vehicles.sort((a,b) => a.running_position - b.running_position);
 
-    document.getElementById("updated").textContent = "Last updated: " + new Date().toLocaleTimeString();
-  } catch (err) {
-    console.error("Telemetry error:", err);
-    document.getElementById("updated").textContent = "Connection to telemetry lost. Retrying...";
-  }
+        data.vehicles.forEach(v => {
+            const isLeader = v.running_position === 1;
+            const row = document.createElement("tr");
+            if(isLeader) row.className = "leader-row";
+
+            // Map Manufacturer
+            const mfrMap = { 1: "Chv", 2: "Frd", 3: "Tyt" };
+            const mfr = mfrMap[v.vehicle_manufacturer] || "Chv";
+
+            row.innerHTML = `
+                <td>
+                    <strong>${v.running_position}</strong> 
+                    <span class="delta-up">▲${Math.abs(v.starting_position - v.running_position)}</span>
+                </td>
+                <td><strong>#${v.vehicle_number}</strong></td>
+                <td style="text-align:left">
+                    <strong>${v.driver.full_name}</strong>
+                    <span class="mfr">${mfr}</span>
+                </td>
+                <td>${isLeader ? 'Leader' : '+' + v.delta.toFixed(3)}</td>
+                <td>${data.lap_number}</td>
+                <td><span class="status-dot"></span> Running</td>
+                <td>${v.pit_stops || 0}</td>
+                <td>${v.laps_led.length}</td>
+                <td>${v.best_lap_time.toFixed(3)}</td>
+                <td>${v.last_lap_time.toFixed(3)}</td>
+            `;
+            tbody.appendChild(row);
+        });
+    } catch (e) { console.error("Update failed", e); }
 }
 
-function updateStatus(feed) {
-  const completed = feed.lap_number || 0;
-  const total = feed.laps_in_race || 0;
-
-  const flagMap = {
-    1: "Green Flag 🟢",
-    2: "Yellow Flag 🟡",
-    3: "Red Flag 🔴",
-    4: "White Flag ⚪",
-    5: "Checkered Flag 🏁",
-    8: "Hot Track 🔥",
-    9: "Cold Track ❄️"
-  };
-
-  let flagText = flagMap[feed.flag_state] || "Waiting for Green 🏳️";
-  
-  // Force Checkered if laps are complete
-  if (completed > 0 && completed === total) {
-    flagText = "Checkered Flag 🏁";
-  }
-
-  document.getElementById("flag-status").innerHTML = `${flagText} &nbsp;|&nbsp; Laps: ${completed} / ${total}`;
-}
-
-function updateRaceTable(feed) {
-  const tbody = document.querySelector("#race-table tbody");
-  tbody.innerHTML = "";
-  if (!feed.vehicles) return;
-
-  const fastestLapTime = Math.min(...feed.vehicles.map(v => v.best_lap_time).filter(t => t > 0));
-
-  feed.vehicles.sort((a,b) => a.running_position - b.running_position).forEach(v => {
-      const row = document.createElement("tr");
-      const driver = v.driver?.full_name || "Unknown";
-      
-      // Calculate Laps Led with Pole Sitter offset
-      let lapsLedVal = v.laps_led?.length ? v.laps_led.reduce((sum, l) => sum + (l.end_lap - l.start_lap - 1), 0) : 0;
-      if (v.starting_position === 1 && lapsLedVal > 0) lapsLedVal -= 0;
-      const lapsLed = lapsLedVal > 0 ? lapsLedVal : "-";
-      
-      const hasFastest = v.best_lap_time === fastestLapTime && v.best_lap_time > 0;
-
-      // Status Logic & Styling
-      let statusText = "Out";
-      let statusClass = "status-out";
-      
-      if (v.status === 1) {
-        if (v.is_off_track) {
-          statusText = "Off";
-          statusClass = "status-off";
-        } else {
-          statusText = "Running";
-          statusClass = "status-running";
-        }
-      }
-
-      row.innerHTML = `
-        <td><strong>${v.running_position ?? "-"}</strong></td>
-        <td>${v.vehicle_number ?? "-"}</td>
-        <td style="text-align: left; font-weight: bold;">${driver}</td>
-        <td>${v.delta > 0 ? '+' + v.delta.toFixed(3) : (v.delta === 0 ? "Leader" : "-")}</td>
-        <td class="${statusClass}">${statusText}</td>
-        <td>${lapsLed}</td>
-        <td class="${hasFastest ? 'fastest' : ''}">${v.best_lap_time ? v.best_lap_time.toFixed(3) : "-"} ${hasFastest ? '🚀' : ''}</td>
-      `;
-      tbody.appendChild(row);
-    });
-}
-
-fetchData();
-setInterval(fetchData, 10000); // 10 second refresh
+setInterval(updateRace, 5000);
+updateRace();
 </script>
 </body>
 </html>
